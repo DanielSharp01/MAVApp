@@ -17,6 +17,11 @@ namespace MAVAppBackend
         private List<Vector2> points = new List<Vector2>();
 
         /// <summary>
+        /// Map projection of the points
+        /// </summary>
+        private Map map;
+
+        /// <summary>
         /// Points representing the polyline
         /// </summary>
         public IEnumerable<Vector2> Points
@@ -32,12 +37,27 @@ namespace MAVAppBackend
         }
 
         /// <param name="points">Points representing the polyline</param>
-        public Polyline(List<Vector2> points)
+        /// <param name="map">Map projection of the points</param>
+        public Polyline(List<Vector2> points, Map map)
         {
             foreach (Vector2 p in points)
             {
                 this.points.Add(p);
             }
+            this.map = map;
+        }
+
+        /// <summary>
+        /// Gets the points representing this polyline in a new projection
+        /// <param name="map">New projection</param>
+        /// </summary>
+        public IEnumerable<Vector2> ReprojectPoints(Map map)
+        {
+            foreach (Vector2 p in points)
+            {
+                yield return p;
+            }
+            yield break;
         }
 
         /// <summary>
@@ -50,7 +70,7 @@ namespace MAVAppBackend
         {
             if (km < 0) return points.First();
 
-            double kmpp = Map.MeterPerWebMercUnit(Map.Center) / 1000;
+            double kmpp = map.MeterPerWebMercUnit() / 1000;
 
             for (int i = 0; i < points.Count - 1; i++)
             {
@@ -70,10 +90,11 @@ namespace MAVAppBackend
         /// <para>Note: Distance means the distance of line segments which are before the point plus the distance on the specific line segment where the point is</para>
         /// </summary>
         /// <param name="point">Point to be projected</param>
+        /// <param name="map">Map projection to take into account</param>
         /// <returns>Distance from the start</returns>
         public double GetProjectedDistance(Vector2 point)
         {
-            double kmpp = Map.MeterPerWebMercUnit(Map.Center) / 1000;
+            double kmpp = map.MeterPerWebMercUnit() / 1000;
 
             int bestIndex = -1;
             double bestProj = 0;
@@ -114,8 +135,9 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="polyline">Encoded polyline</param>
         /// <param name="precisionFactor">Precision factor of the encoded polyline. Same as the one you encoded with if you encoded yourself.</param>
+        /// <param name="map">Map projection to convert into</param>
         /// <returns>Points of the polyline as GPS Position as latitude (X) longitude (Y)</returns>
-        public static List<Vector2> DecodePoints(string polyline, double precisionFactor)
+        public static List<Vector2> DecodePoints(string polyline, double precisionFactor, Map map)
         {
             List<Vector2> points = new List<Vector2>();
             int latitude = 0;
@@ -143,7 +165,7 @@ namespace MAVAppBackend
                 }
                 while (32 <= b);
                 longitude += (result & 1) > 0 ? ~(result >> 1) : result >> 1;
-                points.Add(new Vector2(latitude / precisionFactor, longitude / precisionFactor));
+                points.Add(map.FromLatLon(new Vector2(latitude / precisionFactor, longitude / precisionFactor)));
             }
 
             return points;
@@ -155,9 +177,17 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="points">Points as GPS Position as latitude (X) longitude (Y)</param>
         /// <param name="precisionFactor">Precision factor to encode with.</param>
+        /// <param name="map">Map projection of the points</param>
         /// <returns>Encoded polyline</returns>
-        public static string EncodePoints(List<Vector2> points, double precisionFactor)
+        public static string EncodePoints(List<Vector2> points, double precisionFactor, Map map)
         {
+            List<Vector2> encodablePoints = new List<Vector2>();
+
+            foreach (Vector2 point in points)
+            {
+                encodablePoints.Add(map.ToLatLon(point));
+            }
+
             double factor = 1E5f;
             string output = encodeHelper(points[0].X, 0, factor) + encodeHelper(points[0].Y, 0, factor);
 

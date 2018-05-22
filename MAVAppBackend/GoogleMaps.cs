@@ -57,11 +57,12 @@ namespace MAVAppBackend
         /// Request GooglePlaces API for train stations in a given position
         /// </summary>
         /// <param name="position">GPS Position as latitude (X) longitude (Y)</param>
+        /// <param name="radius">Radius of search (parameter of the API)</param>
         /// <returns>List of Google Places data containing name and coordinate of found stations</returns>
-        public static List<PlacesData> RequestPlaces(Vector2 position)
+        public static List<PlacesData> RequestPlaces(Vector2 position, int radius)
         {
             List<PlacesData> ret = new List<PlacesData>();
-            HttpWebRequest request = WebRequest.CreateHttp("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + position.ToString() + "&radius=2000&type=train_station&key=" + GooglePlacesAPIKey);
+            HttpWebRequest request = WebRequest.CreateHttp("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + position.ToString() + "&radius=" + radius + "&type=train_station&key=" + GooglePlacesAPIKey);
             request.Method = "GET";
             using (WebResponse response = request.GetResponse())
             {

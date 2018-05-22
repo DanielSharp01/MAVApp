@@ -15,7 +15,7 @@ namespace MAVAppBackend
         /// <summary>
         /// Tile size of Google Maps
         /// </summary>
-        public const int TILE_SIZE = 256;
+        public const int DEFAULT_TILE_SIZE = 256;
         /// <summary>
         /// Zoom level of Hungary on Google maps
         /// </summary>
@@ -66,13 +66,13 @@ namespace MAVAppBackend
         {
             Center = LatLonToWebMerc(DefaultCenter);
             Zoom = DefaultZoom;
-            TileSize = TILE_SIZE;
+            TileSize = DEFAULT_TILE_SIZE;
         }
 
         /// <param name="center">Center of the map in latitude, longitude</param>
         /// <param name="zoom"></param>
         /// <param name="tileSize"></param>
-        public Map(Vector2 center, double zoom = DefaultZoom, int tileSize = TILE_SIZE)
+        public Map(Vector2 center, double zoom = DefaultZoom, int tileSize = DEFAULT_TILE_SIZE)
         {
             Center = LatLonToWebMerc(center);
             Zoom = zoom;
@@ -109,7 +109,7 @@ namespace MAVAppBackend
         /// <returns>WebMercator X, Y vector in the new projection</returns>
         public Vector2 ProjectUnscaled(Vector2 p)
         {
-            return (p - Center) * TILE_SIZE * Math.Pow(2, Zoom);
+            return (p - Center) * TileSize * Math.Pow(2, Zoom);
         }
 
         /// <summary>
@@ -119,7 +119,7 @@ namespace MAVAppBackend
         /// <returns>Unscaled WebMercator X, Y vector</returns>
         public Vector2 IntoUnscaled(Vector2 p)
         {
-            return p / TILE_SIZE / Math.Pow(2, Zoom) + Center;
+            return p / TileSize / Math.Pow(2, Zoom) + Center;
         }
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace MAVAppBackend
         /// <param name="center">Center to take into account</param>
         public double MeterPerWebMercUnit()
         {
-            return Math.Cos(Center.X * Math.PI / 180) * 6371000 * 2 * Math.PI / (TILE_SIZE * Math.Pow(2, Zoom));
+            return Math.Cos(ToLatLon(Center).X * Math.PI / 180) * 6371000 * 2 * Math.PI / (TileSize * Math.Pow(2, Zoom));
         }
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace MAVAppBackend
         /// <returns>Latitude, Longitude vector</returns>
         public static Vector2 WebMercToLatLon(Vector2 p)
         {
-            return new Vector2((p.Y / 180 + 1) / 2, (Math.PI - Math.Log(Math.Tan(Math.PI / 4 + p.X * Math.PI / 360))) / (2 * Math.PI));
+            return new Vector2((Math.Atan(Math.Exp(Math.PI - 2 * Math.PI * p.Y)) - Math.PI / 4) * 360 / Math.PI, 180 * (p.X * 2 - 1));
         }
     }
 }

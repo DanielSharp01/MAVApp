@@ -42,6 +42,13 @@ namespace MAVAppBackend
         }
     }
 
+    class PlaceAPIException : Exception
+    {
+        public PlaceAPIException(string message) : base(message)
+        { }
+    }
+
+
     /// <summary>
     /// Google maps APIs
     /// </summary>
@@ -64,18 +71,37 @@ namespace MAVAppBackend
             List<PlacesData> ret = new List<PlacesData>();
             HttpWebRequest request = WebRequest.CreateHttp("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + position.ToString() + "&radius=" + radius + "&type=train_station&key=" + GooglePlacesAPIKey);
             request.Method = "GET";
-            using (WebResponse response = request.GetResponse())
+            try
             {
-                using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
+                using (WebResponse response = request.GetResponse())
                 {
-                    string json = reader.ReadToEnd();
-                    JArray results = JObject.Parse(json)["results"] as JArray;
-                    foreach (JObject place in results)
+                    using (StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
                     {
-                        ret.Add(new PlacesData(place["name"].ToString(),
-                                               new Vector2(place["geometry"]["location"]["lat"].ToString(), place["geometry"]["location"]["lng"].ToString())));
+                        string json = reader.ReadToEnd();
+                        JObject whole = JObject.Parse(json);
+                        string status = whole["status"].ToString();
+                        if (status == "OK" || status == "ZERO_RESULTS")
+                        {
+                            JArray results = whole["results"] as JArray;
+                            foreach (JObject place in results)
+                            {
+                                ret.Add(new PlacesData(place["name"].ToString(),
+                                                       new Vector2(place["geometry"]["location"]["lat"].ToString(), place["geometry"]["location"]["lng"].ToString())));
+                            }
+                        }
+                        else
+                        {
+                            throw new PlaceAPIException("Places API is unavailable. Status code: " + status);
+                        }
                     }
                 }
+            }
+            catch (WebException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(e.Message);
+                Console.ResetColor();
+                throw new PlaceAPIException("Places API is unavailable.");
             }
 
             return ret;

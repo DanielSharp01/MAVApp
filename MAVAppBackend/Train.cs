@@ -5,81 +5,13 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace MAVAppBackend
 {
-    /// <summary>
-    /// Tells how accurate the positional data is
-    /// </summary>
-    public enum StationPositionAccuracy
-    {
-        /// <summary>
-        /// No data could be acquired (MÁV doesn't supply an integer distance)
-        /// </summary>
-        NoData,
-        /// <summary>
-        /// No Google data could be acquired (GooglePlaces API is unavaliable)
-        /// </summary>
-        IntegerAccuracy,
-        /// <summary>
-        /// Google data could be acquired
-        /// </summary>
-        PreciseAccuracy
-    }
-
-    /// <summary>
-    /// Represents a train station
-    /// </summary>
-    public class Station
-    {
-        /// <summary>
-        /// Name of the station
-        /// </summary>
-        public string Name
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Position if known
-        /// See also: <seealso cref="PositionAccuracy"/>
-        /// </summary>
-        public Vector2 Position
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Tells how accurate the positional data is
-        /// </summary>
-        public StationPositionAccuracy PositionAccuracy
-        {
-            private set;
-            get;
-        } = StationPositionAccuracy.NoData;
-
-        /// <param name="name">Name of the station</param>
-        public Station(string name)
-        {
-            Name = name;
-        }
-
-        /// <summary>
-        /// Updates the positional information of this station
-        /// </summary>
-        /// <param name="position">New position in Map.Default WebMercator projection</param>
-        /// <param name="accuracy">Accuracy of the new position</param>
-        public void UpdatePosition(Vector2 position, StationPositionAccuracy accuracy)
-        {
-            Position = position;
-            PositionAccuracy = accuracy;
-        }
-    }
 
     /// <summary>
     /// Station information of a specific train journey
@@ -323,81 +255,96 @@ namespace MAVAppBackend
 
             HtmlDocument trainHTML = new HtmlDocument();
             trainHTML.LoadHtml(WebUtility.HtmlDecode((string)apiResponse["d"]["result"]["html"]));
-            HtmlNode table = trainHTML.DocumentNode.Descendants("table").Where(tb => tb.HasClass("vt")).First();
-
-            // The header containing train type and name information
-            IEnumerable<HtmlNode> tableHeader = table.Descendants("th").First().Descendants();
-            string[] name = tableHeader.First().InnerHtml.Split(new char[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-            Number = name[0];
-
-            // Figuring out train type
-            if (name.Length > 1)
+            HtmlNode table;
+            try
             {
-                if (name[1].Trim().ToLower() == "sebesvonat" || name[1].Trim().ToLower() == "gyorsvonat" || name[1].Trim().ToLower() == "személyvonat"
-                    || name[1].Trim().ToLower() == "EuroRegio" || name[1].Trim().ToLower() == "InterCity" || name[1].Trim().ToLower() == "EuroCity"
-                    || name[1].Trim().ToLower() == "vonatpótló autóbusz" || name[1].Trim().ToLower() == "railjet")
-                {
-                    Type = name[1].Trim().ToLower();
-                }
-                else
-                {
-                    Name = name[1];
-                }
+                table = trainHTML.DocumentNode.Descendants("table").Where(tb => tb.HasClass("vt")).First();
+            }
+            catch (InvalidOperationException e)
+            {
+                throw new MAVAPIException("Cannot parse train table.");
             }
 
-            bool ul = false;
-
-            foreach (HtmlNode node in tableHeader)
+            try
             {
-                // This is a sort of secondary train type for specific trains
-                if (node.HasClass("viszszam2"))
+                // The header containing train type and name information
+                IEnumerable<HtmlNode> tableHeader = table.Descendants("th").First().Descendants();
+                string[] name = tableHeader.First().InnerHtml.Split(new char[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                Number = name[0];
+
+                // Figuring out train type
+                if (name.Length > 1)
                 {
-                    NumberType = node.InnerHtml;
-                }
-                // Sometimes train type can only be decuded from the alt of an image
-                else if (node.Name == "img" && !ul)
-                {
-                    Type = node.Attributes["alt"].Value;
-                }
-                // Sometimes trains can be broken down into multiple types
-                else if (node.Name == "ul")
-                {
-                    ul = true;
-                    Type = "";
-                    foreach (HtmlNode li in node.Descendants("li"))
+                    if (name[1].Trim().ToLower() == "sebesvonat" || name[1].Trim().ToLower() == "gyorsvonat" || name[1].Trim().ToLower() == "személyvonat"
+                        || name[1].Trim().ToLower() == "EuroRegio" || name[1].Trim().ToLower() == "InterCity" || name[1].Trim().ToLower() == "EuroCity"
+                        || name[1].Trim().ToLower() == "vonatpótló autóbusz" || name[1].Trim().ToLower() == "railjet")
                     {
-                        string type = "";
-                        type = Regex.Replace(li.Descendants().First().InnerHtml, @"\s+", " ");
-                        IEnumerable<HtmlNode> img = li.Descendants().Where(d => d.Name == "img");
-                        if (img != null && img.Any())
+                        Type = name[1].Trim().ToLower();
+                    }
+                    else
+                    {
+                        Name = name[1];
+                    }
+                }
+
+                bool ul = false;
+
+                foreach (HtmlNode node in tableHeader)
+                {
+                    // This is a sort of secondary train type for specific trains
+                    if (node.HasClass("viszszam2"))
+                    {
+                        NumberType = node.InnerHtml;
+                    }
+                    // Sometimes train type can only be decuded from the alt of an image
+                    else if (node.Name == "img" && !ul)
+                    {
+                        Type = node.Attributes["alt"].Value;
+                    }
+                    // Sometimes trains can be broken down into multiple types
+                    else if (node.Name == "ul")
+                    {
+                        ul = true;
+                        Type = "";
+                        foreach (HtmlNode li in node.Descendants("li"))
                         {
-                            type += " " + img.First().Attributes["alt"].Value;
+                            string type = "";
+                            type = Regex.Replace(li.Descendants().First().InnerHtml, @"\s+", " ");
+                            IEnumerable<HtmlNode> img = li.Descendants().Where(d => d.Name == "img");
+                            if (img != null && img.Any())
+                            {
+                                type += " " + img.First().Attributes["alt"].Value;
+                            }
+                            Type += (Type == "" ? "" : "\n") + type;
                         }
-                        Type += (Type == "" ? "" : "\n") + type;
+                    }
+                }
+
+                // Any information that might be helpful
+                IEnumerable<HtmlNode> miscInform = table.Descendants("th").Skip(1);
+                foreach (HtmlNode node in miscInform)
+                {
+                    // The actual table headers start which are uninteresting
+                    if (node.InnerHtml == "Km") break;
+
+                    // Anything starting with this text is redundant with another API's information
+                    if (node.InnerHtml.StartsWith("A pillanatnyi késés")) continue;
+
+                    // Anything containing the word delay is related to delays (this might fail)
+                    else if (node.InnerHtml.Contains("késés"))
+                    {
+                        DelayReason = node.InnerHtml;
+                    }
+                    // The truly misc info
+                    else
+                    {
+                        miscInfo.Add(node.InnerHtml);
                     }
                 }
             }
-
-            // Any information that might be helpful
-            IEnumerable<HtmlNode> miscInform = table.Descendants("th").Skip(1);
-            foreach (HtmlNode node in miscInform)
+            catch (InvalidOperationException e)
             {
-                // The actual table headers start which are uninteresting
-                if (node.InnerHtml == "Km") break;
-
-                // Anything starting with this text is redundant with another API's information
-                if (node.InnerHtml.StartsWith("A pillanatnyi késés")) continue;
-
-                 // Anything containing the word delay is related to delays (this might fail)
-                else if (node.InnerHtml.Contains("késés"))
-                {
-                    DelayReason = node.InnerHtml;
-                }
-                // The truly misc info
-                else
-                {
-                    miscInfo.Add(node.InnerHtml);
-                }
+                throw new MAVAPIException("Cannot parse train header.");
             }
 
             // Polyline of the train path
@@ -410,7 +357,7 @@ namespace MAVAppBackend
             foreach (HtmlNode stationRow in stationRows)
             {
                 bool highlighted = stationRow.Attributes["class"].Value.StartsWith("row_past");
-                
+
                 // Skip invalid rows
                 if (stationRow.Descendants("td").Count() < 5) continue;
 
@@ -419,47 +366,79 @@ namespace MAVAppBackend
                 int intDistance = -1;
                 if (tdEnumerator.Current.InnerHtml.Trim() != "")
                 {
-                    intDistance = int.Parse(tdEnumerator.Current.InnerHtml);
+                    try
+                    {
+                        intDistance = int.Parse(tdEnumerator.Current.InnerHtml);
+                    }
+                    catch (FormatException e)
+                    {
+                        throw new MAVAPIException("Cannot parse train station distance cell.");
+                    }
                 }
+                else throw new MAVAPIException("International trains are unsupported."); // We have to disregard those as they mess up the whole polyline system
 
                 tdEnumerator.MoveNext(); // On station name cell
                 Station station = new Station(tdEnumerator.Current.InnerText);
-                DateTime date = DateTime.ParseExact(Regex.Match(tdEnumerator.Current.Descendants("a").First().Attributes["onclick"].Value, "d: '(?<date>[^' ]*?)'").Groups["date"].Value, "yy.MM.dd", null);
+                DateTime date = new DateTime(0);
+                try
+                {
+                    date = DateTime.ParseExact(Regex.Match(tdEnumerator.Current.Descendants("a").First().Attributes["onclick"].Value, "d: '(?<date>[^' ]*?)'").Groups["date"].Value, "yy.MM.dd", null);
+                }
+                catch (FormatException e)
+                {
+                    throw new MAVAPIException("Cannot parse train date.");
+                }
+
                 tdEnumerator.MoveNext(); // On arrival time cell
 
                 TimeSpan arrival = new TimeSpan(0, 0, 0), expectedArrival = new TimeSpan(0, 0, 0);
-                if (stationRows.First() != stationRow)
+                try
                 {
-                    // Arrival time parsing block
+                    if (stationRows.First() != stationRow)
                     {
-                        IEnumerator<HtmlNode> timeEnumerator = tdEnumerator.Current.Descendants().GetEnumerator();
-                        timeEnumerator.MoveNext(); // On the first text block contatining scheduled arrival
-                        arrival = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
-                        if (timeEnumerator.MoveNext()) // On a <br>
+                        // Arrival time parsing block
                         {
-                            timeEnumerator.MoveNext(); // On the second text block in a span containing expected arrival
-                            expectedArrival = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                            IEnumerator<HtmlNode> timeEnumerator = tdEnumerator.Current.Descendants().GetEnumerator();
+                            timeEnumerator.MoveNext(); // On the first text block contatining scheduled arrival
+                            arrival = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                            if (timeEnumerator.MoveNext()) // On a <br>
+                            {
+                                timeEnumerator.MoveNext(); // On the second text block in a span containing expected arrival
+                                expectedArrival = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                            }
+                            else expectedArrival = arrival;
                         }
-                        else expectedArrival = arrival;
                     }
+                }
+                catch (FormatException e)
+                {
+                    throw new MAVAPIException("Cannot parse train arrival time.");
                 }
 
                 tdEnumerator.MoveNext(); // On departure time cell
+
                 TimeSpan departure = new TimeSpan(0, 0, 0), expectedDeparture = new TimeSpan(0, 0, 0);
-                if (stationRows.Last() != stationRow)
+                try
                 {
-                    // Departure time parsing block
+                    if (stationRows.Last() != stationRow)
                     {
-                        IEnumerator<HtmlNode> timeEnumerator = tdEnumerator.Current.Descendants().GetEnumerator();
-                        timeEnumerator.MoveNext(); // On the first text block contatining scheduled arrival
-                        departure = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
-                        if (timeEnumerator.MoveNext()) // On a <br>
+                        // Departure time parsing block
                         {
-                            timeEnumerator.MoveNext(); // On the second text block in a span containing expected arrival
-                            expectedDeparture = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                            IEnumerator<HtmlNode> timeEnumerator = tdEnumerator.Current.Descendants().GetEnumerator();
+                            timeEnumerator.MoveNext(); // On the first text block contatining scheduled arrival
+                            departure = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                            if (timeEnumerator.MoveNext()) // On a <br>
+                            {
+                                timeEnumerator.MoveNext(); // On the second text block in a span containing expected arrival
+                                expectedDeparture = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                            }
+                            else expectedDeparture = departure;
                         }
-                        else expectedDeparture = departure;
                     }
+                }
+                catch (FormatException e)
+                {
+                    throw new MAVAPIException("Cannot parse train departure time.");
                 }
 
                 tdEnumerator.MoveNext(); // On platform cell
@@ -485,21 +464,38 @@ namespace MAVAppBackend
                 StationInfo stationInfo = new StationInfo(station, intDistance, arrivalDateTime, departureDateTime, expectedArrivalDateTime, expectedDepartureDateTime,
                     highlighted || (expectedDepartureDateTime <= DateTime.Now), platform == "" ? null : platform);
                 stations.Add(stationInfo);
+            }
 
+            // If the last station can be found at distance 0 then we have to flip the polyline
+            try
+            {
+                backfitStationPosition(Polyline.GetPoint(0), stations[stations.Count - 1].Station.Name);
+                Polyline = new Polyline(Polyline.Points.Reverse().ToList(), Polyline.Map);
+            }
+            catch (PlaceAPIException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(e.Message);
+                Console.ResetColor();
+                stations[0].Station.UpdatePosition(Polyline.GetPoint(stations[0].IntDistance), StationPositionAccuracy.IntegerAccuracy);
+            }
+
+            for (int i = 0; i < stations.Count; i++)
+            {
                 // Try to find the exact position of the station
-                if (intDistance != -1)
+                Vector2 mavPoint = Polyline.GetPoint(stations[i].IntDistance);
+                try
                 {
-                    Vector2 mavPoint = Polyline.GetPoint(intDistance);
-                    try
-                    {
-                        double distance = backfitStationPosition(mavPoint, station.Name);
-                        stationInfo.UpdateRealDistance(distance);
-                        station.UpdatePosition(Polyline.GetPoint(distance), StationPositionAccuracy.PreciseAccuracy);
-                    }
-                    catch (Exception e)
-                    {
-                        station.UpdatePosition(Polyline.GetPoint(intDistance), StationPositionAccuracy.IntegerAccuracy);
-                    }
+                    double distance = backfitStationPosition(mavPoint, stations[i].Station.Name);
+                    stations[i].UpdateRealDistance(distance);
+                    stations[i].Station.UpdatePosition(Polyline.GetPoint(distance), StationPositionAccuracy.PreciseAccuracy);
+                }
+                catch (PlaceAPIException e)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine(e.Message);
+                    Console.ResetColor();
+                    stations[i].Station.UpdatePosition(Polyline.GetPoint(stations[i].IntDistance), StationPositionAccuracy.IntegerAccuracy);
                 }
             }
         }
@@ -518,18 +514,35 @@ namespace MAVAppBackend
         }
 
         /// <summary>
+        /// Compares two station names
+        /// </summary>
+        /// <param name="a">First station name</param>
+        /// <param name="b">Second station name</param>
+        /// <returns>Whether they are similar enough or not</returns>
+        private bool stationCompare(string a, string b)
+        {
+            a = a.ToLower();
+            b = b.ToLower();
+            a = a.Replace(" station", "");
+            b = b.Replace(" station", "");
+            if (string.Compare(a, b, CultureInfo.CurrentCulture, CompareOptions.IgnoreNonSpace) == 0) return true;
+
+            return false;
+        }
+
+        /// <summary>
         /// Returns the real station distance on the line according Google
         /// </summary>
         /// <param name="mavPoint">Integer distance precision point given by MÁV</param>
         /// <param name="stationName">Station name given by MÁV</param>
         private double backfitStationPosition(Vector2 mavPoint, string stationName)
         {
-            List<PlacesData> places = GoogleMaps.RequestPlaces(Map.DefaultMap.ToLatLon(mavPoint), 1500);
-            PlacesData data = places.Find(d => string.Compare(d.Name, stationName, CultureInfo.CurrentCulture, CompareOptions.IgnoreNonSpace) == 0);
+            List<PlacesData> places = GoogleMaps.RequestPlaces(Map.DefaultMap.ToLatLon(mavPoint), 30000);
+            PlacesData data = places.Find(d => stationCompare(d.Name, stationName));
 
             if (data == null)
             {
-                throw new Exception("Places API haven't found station.");
+                throw new PlaceAPIException($"Places API haven't found station {stationName}");
             }
             
             return Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(data.GPSCoord));

@@ -19,7 +19,11 @@ namespace MAVAppBackend
         /// <summary>
         /// Map projection of the points
         /// </summary>
-        private Map map;
+        public Map Map
+        {
+            private set;
+            get;
+        }
 
         /// <summary>
         /// Points representing the polyline
@@ -44,7 +48,7 @@ namespace MAVAppBackend
             {
                 this.points.Add(p);
             }
-            this.map = map;
+            this.Map = map;
         }
 
         /// <summary>
@@ -70,7 +74,7 @@ namespace MAVAppBackend
         {
             if (km < 0) return points.First();
 
-            double kmpp = map.MeterPerWebMercUnit() / 1000;
+            double kmpp = Map.MeterPerWebMercUnit() / 1000;
 
             for (int i = 0; i < points.Count - 1; i++)
             {
@@ -94,7 +98,7 @@ namespace MAVAppBackend
         /// <returns>Distance from the start</returns>
         public double GetProjectedDistance(Vector2 point)
         {
-            double kmpp = map.MeterPerWebMercUnit() / 1000;
+            double kmpp = Map.MeterPerWebMercUnit() / 1000;
 
             int bestIndex = -1;
             double bestProj = 0;

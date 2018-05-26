@@ -126,6 +126,16 @@ namespace MAVAppBackend
             return vec.X == X && vec.Y == Y;
         }
 
+        public override int GetHashCode()
+        {
+            int hash = 17;
+
+            hash = hash * 23 + X.GetHashCode();
+            hash = hash * 23 + Y.GetHashCode();
+
+            return hash;
+        }
+
         /// <summary>
         /// Length of the vector
         /// </summary>

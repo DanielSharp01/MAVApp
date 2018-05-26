@@ -48,7 +48,7 @@ namespace MAVAppBackend
             {
                 this.points.Add(p);
             }
-            this.Map = map;
+            Map = map;
         }
 
         /// <summary>
@@ -139,8 +139,8 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="polyline">Encoded polyline</param>
         /// <param name="precisionFactor">Precision factor of the encoded polyline. Same as the one you encoded with if you encoded yourself.</param>
-        /// <param name="map">Map projection to convert into</param>
-        /// <returns>Points of the polyline as GPS Position as latitude (X) longitude (Y)</returns>
+        /// <param name="map">Map projection to convert into (if null than points are returned as Latitude (X), Longitude (Y) coordinates)</param>
+        /// <returns>Points of the polyline in the projection specified by the map parameter</returns>
         public static List<Vector2> DecodePoints(string polyline, double precisionFactor, Map map)
         {
             List<Vector2> points = new List<Vector2>();
@@ -169,7 +169,9 @@ namespace MAVAppBackend
                 }
                 while (32 <= b);
                 longitude += (result & 1) > 0 ? ~(result >> 1) : result >> 1;
-                points.Add(map.FromLatLon(new Vector2(latitude / precisionFactor, longitude / precisionFactor)));
+                Vector2 p = new Vector2(latitude / precisionFactor, longitude / precisionFactor);
+                if (map != null) p = map.FromLatLon(p);
+                points.Add(p);
             }
 
             return points;
@@ -179,25 +181,31 @@ namespace MAVAppBackend
         /// <para>Encodes a polyline into string from points as GPS Position as latitude (X) longitude (Y)</para>
         /// <para>Source: https://github.com/mapbox/polyline/blob/master/src/polyline.js</para>
         /// </summary>
-        /// <param name="points">Points as GPS Position as latitude (X) longitude (Y)</param>
+        /// <param name="points">Points in the projection specified by the map parameter</param>
         /// <param name="precisionFactor">Precision factor to encode with.</param>
-        /// <param name="map">Map projection of the points</param>
+        /// <param name="map">Map projection of the points (if null than points are treated as Latitude (X), Longitude (Y) coordinates)</param>
         /// <returns>Encoded polyline</returns>
         public static string EncodePoints(List<Vector2> points, double precisionFactor, Map map)
         {
             List<Vector2> encodablePoints = new List<Vector2>();
 
-            foreach (Vector2 point in points)
+            if (map != null)
             {
-                encodablePoints.Add(map.ToLatLon(point));
+                foreach (Vector2 point in points)
+                {
+                    encodablePoints.Add(map.ToLatLon(point));
+                }
+            }
+            else
+            {
+                encodablePoints = points;
             }
 
-            double factor = 1E5f;
-            string output = encodeHelper(points[0].X, 0, factor) + encodeHelper(points[0].Y, 0, factor);
+            string output = encodeHelper(encodablePoints[0].X, 0, precisionFactor) + encodeHelper(encodablePoints[0].Y, 0, precisionFactor);
 
-            for (var i = 1; i < points.Count; i++)
+            for (var i = 1; i < encodablePoints.Count; i++)
             {
-                Vector2 current = points[i], previous = points[i - 1];
+                Vector2 current = encodablePoints[i], previous = encodablePoints[i - 1];
                 output += encodeHelper(current.X, previous.X, precisionFactor);
                 output += encodeHelper(current.Y, previous.Y, precisionFactor);
             }

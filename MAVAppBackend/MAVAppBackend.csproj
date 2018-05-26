@@ -48,7 +48,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GoogleMaps.cs" />
+    <Compile Include="GoogleMapsExtract.cs" />
     <Compile Include="Map.cs" />
     <Compile Include="MAVAPI.cs" />
     <Compile Include="Polyline.cs" />

@@ -506,10 +506,10 @@ namespace MAVAppBackend
         /// <param name="svg">SVG stream to print into</param>
         public void PrintIntoSVG(SVGStream svg)
         {
-            svg.DrawPolyline(Polyline, new Vector2(1920.0 / 2.0, 1080.0 / 2.0), "black", 1);
+            svg.DrawPolyline(Polyline, "black", 1);
             foreach (StationInfo station in stations)
             {
-                if (station.Station.Position != null) svg.DrawCircle(station.Station.Position, new Vector2(1920.0 / 2.0, 1080.0 / 2.0), 3, (station.Station.PositionAccuracy == StationPositionAccuracy.PreciseAccuracy ? "green" : "red"), 1);
+                if (station.Station.Position != null) svg.DrawCircle(station.Station.Position, 3, strokeColor: (station.Station.PositionAccuracy == StationPositionAccuracy.PreciseAccuracy ? "green" : "red"), strokeWidth : 1);
             }
         }
 
@@ -537,7 +537,7 @@ namespace MAVAppBackend
         /// <param name="stationName">Station name given by MÁV</param>
         private double backfitStationPosition(Vector2 mavPoint, string stationName)
         {
-            List<PlacesData> places = GoogleMaps.RequestPlaces(Map.DefaultMap.ToLatLon(mavPoint), 30000);
+            List<PlacesData> places = GoogleMapsExtract.RequestPlaces(Map.DefaultMap.ToLatLon(mavPoint), 30000);
             PlacesData data = places.Find(d => stationCompare(d.Name, stationName));
 
             if (data == null)

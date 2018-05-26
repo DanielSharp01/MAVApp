@@ -9,6 +9,20 @@ This project is a server for accessing and processing MÁV's (Hungarian Railway 
 - [ ] Trains stopping near a GPS Coordinate (closest station)
 - [ ] GPS Location and delays for moving trains
 
+## TODO List:
+
+- [x] Station extraction
+- [ ] Train station deduction when Google data is unavailable
+- [ ] Legally correct approach to Google Places API data extraction (dynamic approach instead static storage)
+- [ ] Trains from ROUTE API
+- [ ] Trains from STATION API
+- [x] Train static data extraction
+- [ ] Train dynamic data extraction
+- [ ] Closest station (from GPS coordinates)
+- [ ] Deduce train travelled with (from stream of GPS coordinates for a couple seconds)
+- [ ] MySQL data storage
+
+
 ## Notice
 
 The application uses an `all_stations.txt` which I can't share legally as it's using Google Places API data. You have to place this file next to the executable (for now, it will probably move into an SQL database).

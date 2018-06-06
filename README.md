@@ -1,6 +1,6 @@
 # MAVAppBackend
 
-This project is a server for accessing and processing MÁV's (Hungarian Railway Company) inconsistently formatted data into something useful.
+This project is a JSON API for accessing and processing MÁV's (Hungarian Railway Company) inconsistently formatted data into something useful.
 
 ## Planned API's
 

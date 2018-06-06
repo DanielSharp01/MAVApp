@@ -15,7 +15,7 @@ namespace MAVAppBackend
     /// Name with Latitude, longitude information.
     /// See also: <seealso cref="GoogleMapsExtract.RequestPlaces"/>
     /// </summary>
-    public class PlacesData
+    public class Station
     {
         /// <summary>
         /// Name of the place
@@ -37,7 +37,7 @@ namespace MAVAppBackend
 
         /// <param name="name">Name of the place</param>
         /// <param name="gpsCoord">GPS Position as latitude (X) longitude (Y)</param>
-        public PlacesData(string name, Vector2 gpsCoord)
+        public Station(string name, Vector2 gpsCoord)
         {
             Name = name;
             GPSCoord = gpsCoord;
@@ -56,7 +56,7 @@ namespace MAVAppBackend
         public override bool Equals(object obj)
         {
             if (obj == this) return true;
-            PlacesData place = obj as PlacesData;
+            Station place = obj as Station;
             if (place == null) return false;
 
             return place.Name == Name && place.GPSCoord == GPSCoord;
@@ -67,9 +67,9 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="places">List to add to</param>
         /// <param name="added">List to add</param>
-        public static void AddPlacesTo(List<PlacesData> places, List<PlacesData> added)
+        public static void AddPlacesTo(List<Station> places, List<Station> added)
         {
-            foreach (PlacesData place in added)
+            foreach (Station place in added)
             {
                 if (!places.Any(p => p.Name == place.Name))
                 {
@@ -96,16 +96,16 @@ namespace MAVAppBackend
         /// Note: You do have to set this up in your environment variables.
         /// </summary>
         private static string GooglePlacesAPIKey = Environment.GetEnvironmentVariable("PlacesAPIKey", EnvironmentVariableTarget.User);
-        
+
         /// <summary>
         /// Request GooglePlaces API for train stations in a given position
         /// </summary>
         /// <param name="position">GPS Position as latitude (X) longitude (Y)</param>
         /// <param name="radius">Radius of search (parameter of the API)</param>
         /// <returns>List of Google Places data containing name and coordinate of found stations</returns>
-        public static List<PlacesData> RequestPlaces(Vector2 position, int radius)
+        public static List<Station> RequestPlaces(Vector2 position, int radius)
         {
-            List<PlacesData> ret = new List<PlacesData>();
+            List<Station> ret = new List<Station>();
             HttpWebRequest request = WebRequest.CreateHttp("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=" + position.ToString() + "&radius=" + radius + "&type=train_station&key=" + GooglePlacesAPIKey);
             request.Method = "GET";
             try
@@ -122,7 +122,7 @@ namespace MAVAppBackend
                             JArray results = whole["results"] as JArray;
                             foreach (JObject place in results)
                             {
-                                ret.Add(new PlacesData(place["name"].ToString(),
+                                ret.Add(new Station(place["name"].ToString(),
                                                        new Vector2(place["geometry"]["location"]["lat"].ToString(), place["geometry"]["location"]["lng"].ToString())));
                             }
                         }
@@ -150,9 +150,9 @@ namespace MAVAppBackend
         /// <param name="requestCnt">Out parameter: requests made towards the API</param>
         /// <param name="lostData">GPS coordinates Latitude (X), Longitude (Y) where there can be stations not returned by the request (more than 20)</param>
         /// <returns>A list of place names and coordinates for every train station in the area</returns>
-        public static List<PlacesData> ScanCountry(out int requestCnt, List<Vector2> lostData)
+        public static List<Station> ScanCountry(out int requestCnt, List<Vector2> lostData)
         {
-            List<PlacesData> ret = new List<PlacesData>();
+            List<Station> ret = new List<Station>();
             int cnt = 0;
 
             double north1 = 48.029010, south1 = 45.728777, west1 = 16.068758, east1 = 18.720120; //First bounding box
@@ -189,7 +189,7 @@ namespace MAVAppBackend
 
             // First bounding box
             int cntInc = 0;
-            PlacesData.AddPlacesTo(ret, ScanBoundingBox(north1, south1, west1, east1, 5000, () =>
+            Station.AddPlacesTo(ret, ScanBoundingBox(north1, south1, west1, east1, 5000, () =>
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine($"Bounding box 1 progress: { (double)cntInc / expectedReqs1 * 100 }%, Total progress: { (double)cnt / expectedReqs * 100 }%");
@@ -201,7 +201,7 @@ namespace MAVAppBackend
 
             // Second bounding box
             cntInc = 0;
-            PlacesData.AddPlacesTo(ret, ScanBoundingBox(north2, south2, west2, east2, 5000, () =>
+            Station.AddPlacesTo(ret, ScanBoundingBox(north2, south2, west2, east2, 5000, () =>
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine($"Bounding box 2 progress: { (double)cntInc / expectedReqs2 * 100 }%, Total progress: { (double)cnt / expectedReqs * 100 }%");
@@ -213,7 +213,7 @@ namespace MAVAppBackend
 
             // Third bounding box
             cntInc = 0;
-            PlacesData.AddPlacesTo(ret, ScanBoundingBox(north3, south3, west3, east3, 5000, () =>
+            Station.AddPlacesTo(ret, ScanBoundingBox(north3, south3, west3, east3, 5000, () =>
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine($"Bounding box 3 progress: { (double)cntInc / expectedReqs3 * 100 }%, Total progress: { (double)cnt / expectedReqs * 100 }%");
@@ -225,7 +225,7 @@ namespace MAVAppBackend
 
             // Fourth bounding box
             cntInc = 0;
-            PlacesData.AddPlacesTo(ret, ScanBoundingBox(north4, south4, west4, east4, 5000, () =>
+            Station.AddPlacesTo(ret, ScanBoundingBox(north4, south4, west4, east4, 5000, () =>
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine($"Bounding box 4 progress: { (double)cntInc / expectedReqs4 * 100 }%, Total progress: { (double)cnt / expectedReqs * 100 }%");
@@ -237,7 +237,7 @@ namespace MAVAppBackend
 
             // Budapest bounding box
             cntInc = 0;
-            PlacesData.AddPlacesTo(ret, ScanBoundingBox(north5, south5, west5, east5, 2000, () =>
+            Station.AddPlacesTo(ret, ScanBoundingBox(north5, south5, west5, east5, 2000, () =>
             {
                 Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine($"Bounding box 5 progress: { (double)cntInc / expectedReqs5 * 100 }%, Total progress: { (double)cnt / expectedReqs * 100 }%");
@@ -265,9 +265,9 @@ namespace MAVAppBackend
         /// <param name="requestProcessed">Action to take when a request is processed</param>
         /// <param name="lostData">GPS coordinates Latitude (X), Longitude (Y) where there can be stations not returned by the request (more than 20)</param>
         /// <returns>A list of place names and coordinates for every train station in the area</returns>
-        public static List<PlacesData> ScanBoundingBox(double north, double south, double west, double east, double radiusM, Action requestProcessed, List<Vector2> lostData)
+        public static List<Station> ScanBoundingBox(double north, double south, double west, double east, double radiusM, Action requestProcessed, List<Vector2> lostData)
         {
-            List<PlacesData> ret = new List<PlacesData>();
+            List<Station> ret = new List<Station>();
             Vector2 topLeft = Map.DefaultMap.FromLatLon(new Vector2(north, west));
             Vector2 bottomLeft = Map.DefaultMap.FromLatLon(new Vector2(south, west));
             Vector2 topRight = Map.DefaultMap.FromLatLon(new Vector2(north, east));
@@ -277,8 +277,8 @@ namespace MAVAppBackend
             {
                 for (double y = topLeft.Y; y < bottomLeft.Y; y += 4.0 / 3.0 * radiusM / Map.DefaultMap.MeterPerWebMercUnit())
                 {
-                    List<PlacesData> places = ScanGPSCoord(new Vector2(x, y), radiusM, lostData);
-                    PlacesData.AddPlacesTo(ret, places);
+                    List<Station> places = ScanGPSCoord(new Vector2(x, y), radiusM, lostData);
+                    Station.AddPlacesTo(ret, places);
                     requestProcessed();
                 }
             }
@@ -293,9 +293,9 @@ namespace MAVAppBackend
         /// <param name="radiusM">Scan radius in meters</param>
         /// <param name="lostData">GPS coordinates Latitude (X), Longitude (Y) where there can be stations not returned by the request (more than 20)</param>
         /// <returns>A list of place names and coordinates for every train station in the area</returns>
-        public static List<PlacesData> ScanGPSCoord(Vector2 gpsCoord, double radiusM, List<Vector2> lostData)
+        public static List<Station> ScanGPSCoord(Vector2 gpsCoord, double radiusM, List<Vector2> lostData)
         {
-            List<PlacesData> places = RequestPlaces(Map.DefaultMap.ToLatLon(gpsCoord), (int)(radiusM));
+            List<Station> places = RequestPlaces(Map.DefaultMap.ToLatLon(gpsCoord), (int)(radiusM));
             // Check for more than 20 possibly lost stations
             if (places.Count >= 20)
             {
@@ -312,10 +312,10 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="places">List of PlacesData (name, GPS coord)</param>
         /// <param name="stream">Stream to write to</param>
-        public static void WritePlacesDataToStream(List<PlacesData> places, Stream stream)
+        public static void WritePlacesDataToStream(List<Station> places, Stream stream)
         {
             StreamWriter writer = new StreamWriter(stream, Encoding.UTF8);
-            foreach (PlacesData place in places)
+            foreach (Station place in places)
             {
                 writer.WriteLine($"{place.Name}|{place.GPSCoord}");
             }
@@ -327,16 +327,16 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="stream">Stream to read from</param>
         /// <returns>List of PlacesData (name, GPS coord)</returns>
-        public static List<PlacesData> ReadPlacesDataFromStream(Stream stream)
+        public static List<Station> ReadPlacesDataFromStream(Stream stream)
         {
-            List<PlacesData> places = new List<PlacesData>();
+            List<Station> places = new List<Station>();
             StreamReader reader = new StreamReader(stream, Encoding.UTF8);
             string line;
             while ((line = reader.ReadLine()) != null)
             {
                 string[] parts = line.Split('|');
                 string[] coordParts = parts[1].Split(',');
-                places.Add(new PlacesData(parts[0], new Vector2(coordParts[0], coordParts[1])));
+                places.Add(new Station(parts[0], new Vector2(coordParts[0], coordParts[1])));
             }
             reader.Close();
             return places;

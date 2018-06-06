@@ -13,6 +13,44 @@ using System.Threading.Tasks;
 namespace MAVAppBackend
 {
     /// <summary>
+    /// Dynamic data from the TRAINS API
+    /// </summary>
+    public class TrainDynData
+    {
+        public string ElviraID
+        {
+            private set;
+            get;
+        }
+
+        /// <summary>
+        /// GPS Position as Latitude (X), Longitude (Y)
+        /// </summary>
+        public Vector2 GPSCoord
+
+        {
+            private set;
+            get;
+        }
+
+        /// <summary>
+        /// Delay in minutes
+        /// </summary>
+        public int Delay
+        {
+            private set;
+            get;
+        }
+
+        public TrainDynData(string elviraID, Vector2 gpsCoord, int delay)
+        {
+            ElviraID = elviraID;
+            GPSCoord = gpsCoord;
+            Delay = delay;
+        }
+    }
+
+    /// <summary>
     /// Exception thrown if the parsing of MAV API returned HTMLs fail
     /// </summary>
     public class MAVAPIException : Exception
@@ -26,6 +64,12 @@ namespace MAVAppBackend
     /// </summary>
     public class MAVAPI
     {
+
+        /// <summary>
+        /// Station objects with name and positional information of known stations
+        /// </summary>
+        private static Dictionary<string, Station> stations = new Dictionary<string, Station>();
+
         /// <summary>
         /// List of MÁV's autocomplete stations
         /// </summary>
@@ -208,10 +252,6 @@ namespace MAVAppBackend
         /// <returns>Whether they are similar enough</returns>
         public static bool StationCompare(string mavStation, string databaseStation)
         {
-            if (databaseStation == "Csengöd" && mavStation.Contains("Csengőd"))
-            {
-                int i = 0;
-            }
             string mavAltName = stationNormalizeName(Regex.Match(mavStation, @"\[(?<altname>.*?)\]").Groups["altname"].Value);
             mavStation = stationNormalizeName(mavStation);
             databaseStation = stationNormalizeName(databaseStation);
@@ -220,6 +260,22 @@ namespace MAVAppBackend
             if (mavAltName == databaseStation) return true;
 
             return false;
+        }
+
+        public static void InitializeStations()
+        {
+            foreach (Station station in GoogleMapsExtract.ReadPlacesDataFromStream(File.OpenRead("all_stations.txt")))
+            {
+                string nn = stationNormalizeName(station.Name);
+                if (!stations.ContainsKey(nn)) stations.Add(nn, new Station(station.Name, station.GPSCoord));
+            }
+        }
+
+        public static Station GetStation(string name)
+        {
+            string nn = stationNormalizeName(name);
+            if (stations.ContainsKey(nn)) return stations[stationNormalizeName(name)];
+            else return null;
         }
 
         /// <summary>
@@ -264,7 +320,12 @@ namespace MAVAppBackend
             }
         }
 
-        public static Train GetTrain(string elviraID)
+        /// <summary>
+        /// Request a train from MÁV
+        /// </summary>
+        /// <param name="elviraID">Unique ID</param>
+        /// <returns></returns>
+        public static Train RequestTrain(string elviraID)
         {
             try
             {
@@ -283,6 +344,30 @@ namespace MAVAppBackend
                 Console.ResetColor();
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Request TRAINS API for dynamic data from MÁV
+        /// </summary>
+        /// <returns></returns>
+        public static List<TrainDynData> RequestTrains()
+        {
+            List<TrainDynData> ret = new List<TrainDynData>();
+            JObject trainsRequest = new JObject();
+            trainsRequest["a"] = "TRAINS";
+            trainsRequest["jo"] = new JObject();
+            trainsRequest["jo"]["history"] = false;
+            trainsRequest["jo"]["id"] = false;
+            JObject trainsResponse = RequestMAV(trainsRequest);
+            if (trainsResponse != null)
+            {
+                foreach (JObject train in trainsResponse["d"]["result"]["Trains"]["Train"])
+                {
+                    ret.Add(new TrainDynData(train["@ElviraID"].ToString(), new Vector2(train["@Lat"].ToString(), train["@Lon"].ToString()), int.Parse(train["@Delay"].ToString())));
+                }
+            }
+
+            return ret;
         }
     }
 }

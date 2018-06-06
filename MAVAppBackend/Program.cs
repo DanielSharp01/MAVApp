@@ -20,7 +20,7 @@ namespace MAVAppBackend
         static void printTrainTest()
         {
             string elviraID = Console.ReadLine();
-            Train train = MAVAPI.GetTrain(elviraID);
+            Train train = MAVAPI.RequestTrain(elviraID);
             if (train == null)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -44,20 +44,23 @@ namespace MAVAppBackend
 
                 foreach (StationInfo station in train.Stations)
                 {
-                    Console.WriteLine($"{station.Station.Name} - " + (station.IntDistance == -1 ? "distance unknown" : station.IntDistance + "km") + $" - Arrival: {station.Arrival.ToString("yyyy. MM. dd. HH:mm")};" +
+                    Console.WriteLine($"{station.Name} - " + (station.IntDistance == -1 ? "distance unknown" : station.IntDistance + "km") + $" - Arrival: {station.Arrival.ToString("yyyy. MM. dd. HH:mm")};" +
                         $"expected: {station.ExpectedArrival.ToString("yyyy. MM. dd. HH:mm")} - Departure: {station.Departure.ToString("yyyy. MM. dd. HH:mm")};" +
                         $"expected: {station.ExpectedDeparture.ToString("yyyy. MM. dd. HH:mm")} - Platform: {station.Platform ?? "unknown"} - " + (station.Arrived ? "arrived" : "not arrived"));
                 }
 
+                
                 SVGStream svg = new SVGStream(@"C:\Users\DanielSharp\Desktop\test.svg", 1920, 1080);
+                svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
                 train.PrintIntoSVG(svg);
+                svg.DrawCircle(Map.DefaultMap.FromLatLon(MAVAPI.RequestTrains().Find(d => d.ElviraID == elviraID).GPSCoord), 5, "red", "yellow", 1);
                 svg.Close();
             }
         }
 
         static void printStationsTest()
         {
-            SVGStream svg = new SVGStream("test.svg", 1920, 1080);
+            SVGStream svg = new SVGStream(@"C:\Users\DanielSharp\Desktop\test.svg", 1920, 1080);
             svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
 
             Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap), Map.DefaultMap);
@@ -77,12 +80,12 @@ namespace MAVAppBackend
 
         }
 
-
         static void Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
+            MAVAPI.InitializeStations();
 
-            printStationsTest();
+            printTrainTest();
 
             Console.ReadLine();
         }

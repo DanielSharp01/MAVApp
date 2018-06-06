@@ -12,6 +12,24 @@ using System.Threading.Tasks;
 
 namespace MAVAppBackend
 {
+    /// <summary>
+    /// Tells how accurate the positional data is
+    /// </summary>
+    public enum StationPositionAccuracy
+    {
+        /// <summary>
+        /// Could not find the station
+        /// </summary>
+        Missing,
+        /// <summary>
+        /// No Google data could be acquired
+        /// </summary>
+        IntegerPrecision,
+        /// <summary>
+        /// Google data could be acquired
+        /// </summary>
+        Precise
+    }
 
     /// <summary>
     /// Station information of a specific train journey
@@ -19,7 +37,16 @@ namespace MAVAppBackend
     public class StationInfo
     {
         /// <summary>
-        /// Station object which contains name and positional information
+        /// Station name as provided by MÁV
+        /// </summary>
+        public string Name
+        {
+            private set;
+            get;
+        }
+
+        /// <summary>
+        /// Station object with precise information
         /// </summary>
         public Station Station
         {
@@ -48,7 +75,11 @@ namespace MAVAppBackend
         /// <summary>
         /// Tells how accurate the positional data is
         /// </summary>
-        public StationPositionAccuracy PositionAccuracy => Station.PositionAccuracy;
+        public StationPositionAccuracy PositionAccuracy
+        {
+            private set;
+            get;
+        }
 
         /// <summary>
         /// Arrival DateTime
@@ -104,7 +135,7 @@ namespace MAVAppBackend
             get;
         }
 
-        /// <param name="station">Station object which contains name and positional information</param>
+        /// <param name="name">Name of the station</param>
         /// <param name="intDistance">Integer distance supplied by MÁV</param>
         /// <param name="arrival">Arrival DateTime</param>
         /// <param name="departure">Departure DateTime</param>
@@ -112,11 +143,12 @@ namespace MAVAppBackend
         /// <param name="expectedDeparture">Expected or actual departure DateTime</param>
         /// <param name="arrived">Did the train arrive yet?</param>
         /// <param name="platform">Platform if known, null otherwise</param>
-        public StationInfo(Station station, int intDistance, DateTime arrival, DateTime departure, DateTime expectedArrival, DateTime expectedDeparture, bool arrived, string platform)
+        public StationInfo(string name, int intDistance, DateTime arrival, DateTime departure, DateTime expectedArrival, DateTime expectedDeparture, bool arrived, string platform)
         {
-            Station = station;
+            Name = name;
             IntDistance = intDistance;
             Distance = intDistance;
+            PositionAccuracy = StationPositionAccuracy.Missing;
             Arrival = arrival;
             Departure = departure;
             ExpectedArrival = expectedArrival;
@@ -126,12 +158,23 @@ namespace MAVAppBackend
         }
 
         /// <summary>
-        /// Updates the precise distance of this station on the line of the train
+        /// Updates this station with a known station object (containing precise GPS information)
         /// </summary>
-        /// <param name="distance">Precise distance of this station on the line of the train</param>
-        public void UpdateRealDistance(double distance)
+        /// <param name="station">Precise station data object</param>
+        public void UpdateStation(Station station)
+        {
+            Station = station;
+        }
+
+        /// <summary>
+        /// Updates this station's distance on the line of the train
+        /// </summary>
+        /// <param name="distance">Distance of this station on the line of the train</param>
+        /// <param name="accuracy">Accuracy of the information</param>
+        public void UpdateDistanceInformation(double distance, StationPositionAccuracy accuracy)
         {
             Distance = distance;
+            PositionAccuracy = accuracy;
         }
     }
 
@@ -375,10 +418,9 @@ namespace MAVAppBackend
                         throw new MAVAPIException("Cannot parse train station distance cell.");
                     }
                 }
-                else throw new MAVAPIException("International trains are unsupported."); // We have to disregard those as they mess up the whole polyline system
 
                 tdEnumerator.MoveNext(); // On station name cell
-                Station station = new Station(tdEnumerator.Current.InnerText);
+                string stationName = tdEnumerator.Current.InnerText;
                 DateTime date = new DateTime(0);
                 try
                 {
@@ -461,41 +503,72 @@ namespace MAVAppBackend
                     expectedDepartureDateTime = date.AddDays(1) + expectedDeparture;
                 }
 
-                StationInfo stationInfo = new StationInfo(station, intDistance, arrivalDateTime, departureDateTime, expectedArrivalDateTime, expectedDepartureDateTime,
+                StationInfo stationInfo = new StationInfo(stationName, intDistance, arrivalDateTime, departureDateTime, expectedArrivalDateTime, expectedDepartureDateTime,
                     highlighted || (expectedDepartureDateTime <= DateTime.Now), platform == "" ? null : platform);
                 stations.Add(stationInfo);
             }
 
-            // If the last station can be found at distance 0 then we have to flip the polyline
-            try
-            {
-                backfitStationPosition(Polyline.GetPoint(0), stations[stations.Count - 1].Station.Name);
-                Polyline = new Polyline(Polyline.Points.Reverse().ToList(), Polyline.Map);
-            }
-            catch (PlaceAPIException e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(e.Message);
-                Console.ResetColor();
-                stations[0].Station.UpdatePosition(Polyline.GetPoint(stations[0].IntDistance), StationPositionAccuracy.IntegerAccuracy);
-            }
-
+            int first = -1;
+            int second = -1;
+            Station firstPrec = null;
+            bool directionDetermined = false;
             for (int i = 0; i < stations.Count; i++)
             {
-                // Try to find the exact position of the station
-                Vector2 mavPoint = Polyline.GetPoint(stations[i].IntDistance);
-                try
+                //Try to find precise data for this station
+                Station s = MAVAPI.GetStation(stations[i].Name);
+                if (s != null)
                 {
-                    double distance = backfitStationPosition(mavPoint, stations[i].Station.Name);
-                    stations[i].UpdateRealDistance(distance);
-                    stations[i].Station.UpdatePosition(Polyline.GetPoint(distance), StationPositionAccuracy.PreciseAccuracy);
+                    // We have found the first station
+                    if (firstPrec == null)
+                    {
+                        first = i;
+                        firstPrec = s;
+                    }
+                    // We have found the second station
+                    else if (!directionDetermined)
+                    {
+                        second = i;
+
+                        //The second station is before the first in distance => flip the line because it's wrong
+                        if (Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(s.GPSCoord)) < Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(firstPrec.GPSCoord)))
+                        {
+                            Polyline = new Polyline(Polyline.Points.Reverse().ToList(), Polyline.Map);
+                        }
+
+                        directionDetermined = true;
+
+                        stations[first].UpdateStation(firstPrec);
+                        stations[first].UpdateDistanceInformation(Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(firstPrec.GPSCoord)), StationPositionAccuracy.Precise);
+                        stations[i].UpdateStation(s);
+                        stations[i].UpdateDistanceInformation(Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(s.GPSCoord)), StationPositionAccuracy.Precise);
+                    }
+                    else
+                    {
+                        // Update precise info if direction was found already
+                        stations[i].UpdateStation(s);
+                        stations[i].UpdateDistanceInformation(Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(s.GPSCoord)), StationPositionAccuracy.Precise);
+                    }
                 }
-                catch (PlaceAPIException e)
+                // If the direction is determined we can at least do integer precision on all subsequent stations, provided integer distance is supplied
+                else if (directionDetermined && stations[i - 1].IntDistance != -1 && stations[i].IntDistance != -1)
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(e.Message);
-                    Console.ResetColor();
-                    stations[i].Station.UpdatePosition(Polyline.GetPoint(stations[i].IntDistance), StationPositionAccuracy.IntegerAccuracy);
+                    stations[i].UpdateDistanceInformation(stations[i - 1].Distance + (stations[i].IntDistance - stations[i - 1].IntDistance), StationPositionAccuracy.IntegerPrecision);
+                }
+                // Any other case it's missing (and it's the default)
+            }
+
+            // We could not determine the direction for certain => everything is marked missing
+            // But even if we did stations before the second could still be marked missing
+            if (directionDetermined)
+            {
+                // Try to determine based on the next station and propagate backwards
+                for (int i = second - 1; i >= 0; i--)
+                {
+                    if (stations[i].PositionAccuracy == StationPositionAccuracy.Missing && stations[i + 1].IntDistance != -1 && stations[i].IntDistance != -1)
+                    {
+                        stations[i].UpdateDistanceInformation(stations[i + 1].Distance - (stations[i + 1].IntDistance - stations[i].IntDistance), StationPositionAccuracy.IntegerPrecision);
+                    }
+                    // Any other case it's still missing
                 }
             }
         }
@@ -509,43 +582,13 @@ namespace MAVAppBackend
             svg.DrawPolyline(Polyline, "black", 1);
             foreach (StationInfo station in stations)
             {
-                if (station.Station.Position != null) svg.DrawCircle(station.Station.Position, 3, strokeColor: (station.Station.PositionAccuracy == StationPositionAccuracy.PreciseAccuracy ? "green" : "red"), strokeWidth : 1);
+                if (station.PositionAccuracy != StationPositionAccuracy.Missing)
+                    svg.DrawCircle(Polyline.GetPoint(station.Distance), 3, strokeColor: (station.PositionAccuracy == StationPositionAccuracy.Precise ? "green" : "red"), strokeWidth : 1);
+                else
+                {
+                    Console.WriteLine(station.Name + " is missing positional data!");
+                }
             }
-        }
-
-        /// <summary>
-        /// Compares two station names
-        /// </summary>
-        /// <param name="a">First station name</param>
-        /// <param name="b">Second station name</param>
-        /// <returns>Whether they are similar enough or not</returns>
-        private bool stationCompare(string a, string b)
-        {
-            a = a.ToLower();
-            b = b.ToLower();
-            a = a.Replace(" station", "");
-            b = b.Replace(" station", "");
-            if (string.Compare(a, b, CultureInfo.CurrentCulture, CompareOptions.IgnoreNonSpace) == 0) return true;
-
-            return false;
-        }
-
-        /// <summary>
-        /// Returns the real station distance on the line according Google
-        /// </summary>
-        /// <param name="mavPoint">Integer distance precision point given by MÁV</param>
-        /// <param name="stationName">Station name given by MÁV</param>
-        private double backfitStationPosition(Vector2 mavPoint, string stationName)
-        {
-            List<PlacesData> places = GoogleMapsExtract.RequestPlaces(Map.DefaultMap.ToLatLon(mavPoint), 30000);
-            PlacesData data = places.Find(d => stationCompare(d.Name, stationName));
-
-            if (data == null)
-            {
-                throw new PlaceAPIException($"Places API haven't found station {stationName}");
-            }
-            
-            return Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(data.GPSCoord));
         }
     }
 }

@@ -54,7 +54,6 @@
     <Compile Include="Polyline.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Station.cs" />
     <Compile Include="SVG.cs" />
     <Compile Include="Train.cs" />
     <Compile Include="Vector2.cs" />

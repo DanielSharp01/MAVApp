@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -20,7 +21,7 @@ namespace MAVAppBackend
         static void printTrainTest()
         {
             string elviraID = Console.ReadLine();
-            Train train = MAVAPI.RequestTrain(elviraID);
+            Train train = Database.GetTrain(elviraID);
             if (train == null)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -33,7 +34,7 @@ namespace MAVAppBackend
                 Console.WriteLine("Train number: " + train.Number);
                 if (train.Name != null) Console.WriteLine("Train name: " + train.Name);
                 Console.WriteLine("Train type: " + train.Type);
-                if (train.NumberType != null) Console.WriteLine("Train number type: " + train.Type);
+                if (train.NumberType != null) Console.WriteLine("Train number type: " + train.NumberType);
                 Console.WriteLine("Elvira ID: " + train.ElviraID);
                 Console.WriteLine(train.DelayReason);
                 if (train.MiscInfo.Any()) Console.WriteLine("Misc info:");
@@ -54,6 +55,17 @@ namespace MAVAppBackend
                 svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
                 train.PrintIntoSVG(svg);
                 svg.DrawCircle(Map.DefaultMap.FromLatLon(MAVAPI.RequestTrains().Find(d => d.ElviraID == elviraID).GPSCoord), 5, "red", "yellow", 1);
+
+                svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
+
+                Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap), Map.DefaultMap);
+                svg.DrawPolyline(polyline, "black", 1);
+
+                foreach (Station station in Database.GetAllStations())
+                {
+                    svg.DrawCircle(Map.DefaultMap.FromLatLon(station.GPSCoord), 1, "green");
+                }
+
                 svg.Close();
             }
         }
@@ -66,27 +78,23 @@ namespace MAVAppBackend
             Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap), Map.DefaultMap);
             svg.DrawPolyline(polyline, "black", 1);
 
-            StreamReader reader = new StreamReader("all_stations.txt");
-            string line;
-            while ((line = reader.ReadLine()) != null)
+            foreach (Station station in Database.GetAllStations())
             {
-                string[] parts1 = line.Split('|');
-                string[] parts2 = parts1[1].Split(',');
-                svg.DrawCircle(Map.DefaultMap.FromLatLon(new Vector2(parts2[0], parts2[1])), 1, "green");
+                svg.DrawCircle(Map.DefaultMap.FromLatLon(station.GPSCoord), 1, "green");
             }
 
-
             svg.Close();
-
         }
 
         static void Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
-            MAVAPI.InitializeStations();
+            Database.Initialize();
 
             printTrainTest();
 
+            Database.Terminate();
+            Console.WriteLine("Program ended...");
             Console.ReadLine();
         }
     }

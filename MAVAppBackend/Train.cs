@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using MySql.Data.MySqlClient;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -12,174 +13,17 @@ using System.Threading.Tasks;
 
 namespace MAVAppBackend
 {
-    /// <summary>
-    /// Tells how accurate the positional data is
-    /// </summary>
-    public enum StationPositionAccuracy
-    {
-        /// <summary>
-        /// Could not find the station
-        /// </summary>
-        Missing,
-        /// <summary>
-        /// No Google data could be acquired
-        /// </summary>
-        IntegerPrecision,
-        /// <summary>
-        /// Google data could be acquired
-        /// </summary>
-        Precise
-    }
-
-    /// <summary>
-    /// Station information of a specific train journey
-    /// </summary>
-    public class StationInfo
-    {
-        /// <summary>
-        /// Station name as provided by MÁV
-        /// </summary>
-        public string Name
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Station object with precise information
-        /// </summary>
-        public Station Station
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Integer distance supplied by MÁV
-        /// </summary>
-        public int IntDistance
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Precise distance on the line
-        /// </summary>
-        public double Distance
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Tells how accurate the positional data is
-        /// </summary>
-        public StationPositionAccuracy PositionAccuracy
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Arrival DateTime
-        /// </summary>
-        public DateTime Arrival
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Departure DateTime
-        /// </summary>
-        public DateTime Departure
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Expected or actual arrival DateTime
-        /// </summary>
-        public DateTime ExpectedArrival
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Expected or actual departure DateTime
-        /// </summary>
-        public DateTime ExpectedDeparture
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Did the train arrive yet?
-        /// </summary>
-        public bool Arrived
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Platform if known, null otherwise
-        /// </summary>
-        public string Platform
-        {
-            private set;
-            get;
-        }
-
-        /// <param name="name">Name of the station</param>
-        /// <param name="intDistance">Integer distance supplied by MÁV</param>
-        /// <param name="arrival">Arrival DateTime</param>
-        /// <param name="departure">Departure DateTime</param>
-        /// <param name="expectedArrival">Expected or actual arrival DateTime</param>
-        /// <param name="expectedDeparture">Expected or actual departure DateTime</param>
-        /// <param name="arrived">Did the train arrive yet?</param>
-        /// <param name="platform">Platform if known, null otherwise</param>
-        public StationInfo(string name, int intDistance, DateTime arrival, DateTime departure, DateTime expectedArrival, DateTime expectedDeparture, bool arrived, string platform)
-        {
-            Name = name;
-            IntDistance = intDistance;
-            Distance = intDistance;
-            PositionAccuracy = StationPositionAccuracy.Missing;
-            Arrival = arrival;
-            Departure = departure;
-            ExpectedArrival = expectedArrival;
-            ExpectedDeparture = expectedDeparture;
-            Arrived = arrived;
-            Platform = platform;
-        }
-
-        /// <summary>
-        /// Updates this station with a known station object (containing precise GPS information)
-        /// </summary>
-        /// <param name="station">Precise station data object</param>
-        public void UpdateStation(Station station)
-        {
-            Station = station;
-        }
-
-        /// <summary>
-        /// Updates this station's distance on the line of the train
-        /// </summary>
-        /// <param name="distance">Distance of this station on the line of the train</param>
-        /// <param name="accuracy">Accuracy of the information</param>
-        public void UpdateDistanceInformation(double distance, StationPositionAccuracy accuracy)
-        {
-            Distance = distance;
-            PositionAccuracy = accuracy;
-        }
-    }
-
     public class Train
     {
+        /// <summary>
+        /// MySQL ID
+        /// </summary>
+        public int ID
+        {
+            private set;
+            get;
+        }
+
         /// <summary>
         /// Most unique ID used by MÁV
         /// </summary>
@@ -239,6 +83,24 @@ namespace MAVAppBackend
         }
 
         /// <summary>
+        /// Delay in minutes
+        /// </summary>
+        public int Delay
+        {
+            private set;
+            get;
+        } = 0; // Will be set in the Update method
+
+        /// <summary>
+        /// Current GPS Position of the train if known
+        /// </summary>
+        public Vector2 GPSPosition
+        {
+            private set;
+            get;
+        }
+
+        /// <summary>
         /// Misc info such as service changes etc.
         /// </summary>
         private List<string> miscInfo = new List<string>();
@@ -285,6 +147,24 @@ namespace MAVAppBackend
         {
             private set;
             get;
+        }
+
+        /// <summary>
+        /// Constructs a train from MySQL data
+        /// </summary>
+        /// <param name="reader">MySqlDataReader which is set on the row containing this train</param>
+        public Train(int id, string elviraID, string number, string name, string type, string numberType, string delayReason, string encPolyline, Vector2 gpsPosition, List<StationInfo> stations)
+        {
+            ID = id;
+            ElviraID = elviraID;
+            Number = number;
+            Name = name;
+            Type = type;
+            NumberType = numberType;
+            DelayReason = delayReason;
+            Polyline = new Polyline(Polyline.DecodePoints(encPolyline, 1E5f, Map.DefaultMap), Map.DefaultMap);
+            GPSPosition = gpsPosition;
+            this.stations.AddRange(stations);
         }
 
         /// <summary>
@@ -402,7 +282,7 @@ namespace MAVAppBackend
                 bool highlighted = stationRow.Attributes["class"].Value.StartsWith("row_past");
 
                 // Skip invalid rows
-                if (stationRow.Descendants("td").Count() < 5) continue;
+                if (stationRow.Descendants("td").Count() < 4) continue;
 
                 IEnumerator<HtmlNode> tdEnumerator = stationRow.Descendants("td").GetEnumerator();
                 tdEnumerator.MoveNext(); // On integer distance cell
@@ -467,11 +347,11 @@ namespace MAVAppBackend
                         // Departure time parsing block
                         {
                             IEnumerator<HtmlNode> timeEnumerator = tdEnumerator.Current.Descendants().GetEnumerator();
-                            timeEnumerator.MoveNext(); // On the first text block contatining scheduled arrival
+                            timeEnumerator.MoveNext(); // On the first text block contatining scheduled departure
                             departure = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
                             if (timeEnumerator.MoveNext()) // On a <br>
                             {
-                                timeEnumerator.MoveNext(); // On the second text block in a span containing expected arrival
+                                timeEnumerator.MoveNext(); // On the second text block in a span containing expected departure
                                 expectedDeparture = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
                             }
                             else expectedDeparture = departure;
@@ -483,8 +363,12 @@ namespace MAVAppBackend
                     throw new MAVAPIException("Cannot parse train departure time.");
                 }
 
-                tdEnumerator.MoveNext(); // On platform cell
-                string platform = tdEnumerator.Current.InnerHtml.Trim();
+                string platform = null;
+                if (tdEnumerator.MoveNext()) // There might not even be a cell for platforms
+                {
+                    // On platform cell
+                    platform = tdEnumerator.Current.InnerHtml.Trim();
+                }
 
                 DateTime arrivalDateTime = date + arrival, departureDateTime = date + departure, expectedArrivalDateTime = date + expectedArrival, expectedDepartureDateTime = date + expectedDeparture;
 
@@ -515,7 +399,7 @@ namespace MAVAppBackend
             for (int i = 0; i < stations.Count; i++)
             {
                 //Try to find precise data for this station
-                Station s = MAVAPI.GetStation(stations[i].Name);
+                Station s = Database.GetStation(stations[i].Name);
                 if (s != null)
                 {
                     // We have found the first station
@@ -571,6 +455,154 @@ namespace MAVAppBackend
                     // Any other case it's still missing
                 }
             }
+        }
+
+        /// <summary>
+        /// Updates fields based on a new JSON request
+        /// </summary>
+        /// <param name="apiResponse">JSON TRAIN MÁV API response</param>
+        public void UpdateTRAIN_API(JObject apiResponse)
+        {
+            HtmlDocument trainHTML = new HtmlDocument();
+            trainHTML.LoadHtml(WebUtility.HtmlDecode((string)apiResponse["d"]["result"]["html"]));
+            HtmlNode table;
+            try
+            {
+                table = trainHTML.DocumentNode.Descendants("table").Where(tb => tb.HasClass("vt")).First();
+            }
+            catch (InvalidOperationException e)
+            {
+                throw new MAVAPIException("Cannot parse train table.");
+            }
+
+            try
+            {
+                miscInfo.Clear();
+                // Any information that might be helpful
+                IEnumerable<HtmlNode> miscInform = table.Descendants("th").Skip(1);
+                foreach (HtmlNode node in miscInform)
+                {
+                    // The actual table headers start which are uninteresting
+                    if (node.InnerHtml == "Km") break;
+
+                    // Anything starting with this text is redundant with another API's information
+                    if (node.InnerHtml.StartsWith("A pillanatnyi késés")) continue;
+
+                    // Anything containing the word delay is related to delays (this might fail)
+                    else if (node.InnerHtml.Contains("késés"))
+                    {
+                        DelayReason = node.InnerHtml;
+                    }
+                    // The truly misc info
+                    else
+                    {
+                        miscInfo.Add(node.InnerHtml);
+                    }
+                }
+            }
+            catch (InvalidOperationException e)
+            {
+                throw new MAVAPIException("Cannot parse train header.");
+            }
+
+            // Station infos
+            IEnumerable<HtmlNode> stationRows = table.Descendants("tr").Where(tr => tr.Attributes.Contains("class"));
+
+            int stationCnt = 0;
+            foreach (HtmlNode stationRow in stationRows)
+            {
+                bool highlighted = stationRow.Attributes["class"].Value.StartsWith("row_past");
+
+                // Skip invalid rows
+                if (stationRow.Descendants("td").Count() < 4) continue;
+
+                IEnumerator<HtmlNode> tdEnumerator = stationRow.Descendants("td").GetEnumerator();
+                tdEnumerator.MoveNext(); // On integer distance cell
+                tdEnumerator.MoveNext(); // On station name cell
+                tdEnumerator.MoveNext(); // On arrival time cell
+
+                TimeSpan expectedArrival = stations[stationCnt].ExpectedArrival.TimeOfDay; //Don't change if there's an error parsing
+                try
+                {
+                    if (stationRows.First() != stationRow)
+                    {
+                        // Arrival time parsing block
+                        {
+                            IEnumerator<HtmlNode> timeEnumerator = tdEnumerator.Current.Descendants().GetEnumerator();
+                            timeEnumerator.MoveNext(); // On the first text block contatining scheduled arrival
+                            if (timeEnumerator.MoveNext()) // On a <br>
+                            {
+                                timeEnumerator.MoveNext(); // On the second text block in a span containing expected arrival
+                                expectedArrival = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                            }
+                        }
+                    }
+                }
+                catch (FormatException e)
+                {
+                    throw new MAVAPIException("Cannot parse train arrival time.");
+                }
+
+                tdEnumerator.MoveNext(); // On departure time cell
+
+                TimeSpan expectedDeparture = stations[stationCnt].ExpectedDeparture.TimeOfDay; //Don't change if there's an error parsing
+                try
+                {
+                    if (stationRows.Last() != stationRow)
+                    {
+                        // Departure time parsing block
+                        {
+                            IEnumerator<HtmlNode> timeEnumerator = tdEnumerator.Current.Descendants().GetEnumerator();
+                            timeEnumerator.MoveNext(); // On the first text block contatining scheduled departure
+                            if (timeEnumerator.MoveNext()) // On a <br>
+                            {
+                                timeEnumerator.MoveNext(); // On the second text block in a span containing expected departure
+                                expectedDeparture = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                            }
+                        }
+                    }
+                }
+                catch (FormatException e)
+                {
+                    throw new MAVAPIException("Cannot parse train departure time.");
+                }
+
+                string platform = null;
+                if (tdEnumerator.MoveNext()) // There might not even be a cell for platforms
+                {
+                    // On platform cell
+                    platform = tdEnumerator.Current.InnerHtml.Trim();
+                }
+
+                DateTime expectedArrivalDateTime = stations[stationCnt].Arrival.Date + expectedArrival, expectedDepartureDateTime = stations[stationCnt].Departure.Date + expectedDeparture;
+
+                if (stations[stationCnt].Arrival.TimeOfDay > expectedArrival) // we are on the border of this day
+                {
+                    expectedArrivalDateTime = stations[stationCnt].Arrival.Date.AddDays(1) + expectedArrival;
+                }
+
+                if (stations[stationCnt].Departure.TimeOfDay > expectedDeparture) // we are on the border of this day
+                {
+                    expectedDepartureDateTime = stations[stationCnt].Departure.Date.AddDays(1) + expectedDeparture;
+                }
+
+                stations[stationCnt++].Update(expectedArrivalDateTime, expectedDepartureDateTime, highlighted || (expectedDepartureDateTime <= DateTime.Now), platform == "" ? null : platform);
+            }
+        }
+
+        public void UpdateTRAINS_API(TRAINSData trainsData)
+        {
+            Delay = trainsData.Delay;
+            GPSPosition = trainsData.GPSCoord;
+        }
+
+        /// <summary>
+        /// Sets ID after inserting into the database
+        /// </summary>
+        /// <param name="id">MySQL ID</param>
+        public void SetDBId(int id)
+        {
+            ID = id;
         }
 
         /// <summary>

@@ -17,15 +17,6 @@ namespace MAVAppBackend
         private List<Vector2> points = new List<Vector2>();
 
         /// <summary>
-        /// Map projection of the points
-        /// </summary>
-        public Map Map
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
         /// Points representing the polyline
         /// </summary>
         public IEnumerable<Vector2> Points
@@ -42,26 +33,12 @@ namespace MAVAppBackend
 
         /// <param name="points">Points representing the polyline</param>
         /// <param name="map">Map projection of the points</param>
-        public Polyline(List<Vector2> points, Map map)
+        public Polyline(List<Vector2> points)
         {
             foreach (Vector2 p in points)
             {
                 this.points.Add(p);
             }
-            Map = map;
-        }
-
-        /// <summary>
-        /// Gets the points representing this polyline in a new projection
-        /// <param name="map">New projection</param>
-        /// </summary>
-        public IEnumerable<Vector2> ReprojectPoints(Map map)
-        {
-            foreach (Vector2 p in points)
-            {
-                yield return p;
-            }
-            yield break;
         }
 
         /// <summary>
@@ -69,12 +46,13 @@ namespace MAVAppBackend
         /// <para>Note: Distance means the distance of line segments which are before the point plus the distance on the specific line segment where the point is</para>
         /// </summary>
         /// <param name="km">Distance from the start in kilometers</param>
+        /// <param name="map">The map projection to take into account</param>
         /// <returns>Point at a specific distance away from start</returns>
-        public Vector2 GetPoint(double km)
+        public Vector2 GetPoint(double km, Map map)
         {
             if (km < 0) return points.First();
 
-            double kmpp = Map.MeterPerWebMercUnit() / 1000;
+            double kmpp = map.MeterPerWebMercUnit() / 1000;
 
             for (int i = 0; i < points.Count - 1; i++)
             {
@@ -89,38 +67,46 @@ namespace MAVAppBackend
             return points.Last();
         }
 
+        static int it = 0;
+
         /// <summary>
         /// <para>Gets the distance on the line of a point from the start when projected onto the closest line segment</para>
         /// <para>Note: Distance means the distance of line segments which are before the point plus the distance on the specific line segment where the point is</para>
         /// </summary>
         /// <param name="point">Point to be projected</param>
-        /// <param name="map">Map projection to take into account</param>
-        /// <returns>Distance from the start</returns>
-        public double GetProjectedDistance(Vector2 point)
+        /// <param name="map">The map projection to take into account</param>
+        /// <param name="distanceLimit">The distance limit with which a point is still considered projectable</param>
+        /// <returns>Distance from the start if projectable, NAN otherwise</returns>
+        public double GetProjectedDistance(Vector2 point, Map map, double distanceLimit)
         {
-            double kmpp = Map.MeterPerWebMercUnit() / 1000;
+            double kmpp = map.MeterPerWebMercUnit() / 1000;
 
             int bestIndex = -1;
             double bestProj = 0;
             double bestDist = 0;
+
             for (int i = 0; i < points.Count - 1; i++)
             {
                 Vector2 a = points[i + 1] - points[i];
                 Vector2 b = point - points[i];
                 double proj = a.Dot(b) / a.LengthSquared;
+
                 if (proj < 0) proj = 0;
                 else if (proj > 1) proj = 1;
 
                 double dist = (point - (points[i] + a * proj)).Length * kmpp;
 
-                if (bestIndex == -1 || dist < bestDist)
+                if ((bestIndex == -1 || dist < bestDist) && dist < distanceLimit)
                 {
                     bestIndex = i;
                     bestProj = proj;
                     bestDist = dist;
                 }
-
             }
+
+            // The point could not be projected
+            if (bestIndex == -1)
+                return double.NaN;
 
             double km = 0;
             for (int i = 0; i < bestIndex; i++)

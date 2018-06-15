@@ -17,7 +17,7 @@ namespace MAVAppBackend
         {
             private set;
             get;
-        }
+        } = -1;
 
         /// <summary>
         /// Unique ID used by MÁV
@@ -214,7 +214,7 @@ namespace MAVAppBackend
             this.miscInfo.AddRange(miscInfo.Replace("\r", "").Split('\n'));
 
             if (encPolyline == null) Polyline = null;
-            else Polyline = new Polyline(Polyline.DecodePoints(encPolyline, 1E5f, Map.DefaultMap), Map.DefaultMap);
+            else Polyline = new Polyline(Polyline.DecodePoints(encPolyline, 1E5f, Map.DefaultMap));
 
             GPSPosition = gpsPosition;
             LastGPSPosition = lastGpsPosition;
@@ -257,6 +257,12 @@ namespace MAVAppBackend
             catch (InvalidOperationException e)
             {
                 throw new MAVAPIException("Cannot parse train table.");
+            }
+
+            string fix2400Time(string s)
+            {
+                if (s.Trim() == "24:00") return "0:00";
+                else return s;
             }
 
             try
@@ -345,7 +351,7 @@ namespace MAVAppBackend
             bool hasTrainData = HasTRAINData; // Polyline will be defined in a second so that would skew our method
             // Polyline of the train path
             List<Vector2> points = Polyline.DecodePoints(apiResponse["d"]["result"]["line"][0]["points"].ToString(), 1E5f, Map.DefaultMap);
-            Polyline = new Polyline(points, Map.DefaultMap);
+            Polyline = new Polyline(points);
 
             // Station infos
             IEnumerable<HtmlNode> stationRows = table.Descendants("tr").Where(tr => tr.Attributes.Contains("class"));
@@ -377,7 +383,7 @@ namespace MAVAppBackend
                                 if (timeEnumerator.MoveNext()) // On a <br>
                                 {
                                     timeEnumerator.MoveNext(); // On the second text block in a span containing expected arrival
-                                    expectedArrival = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                                    expectedArrival = TimeSpan.ParseExact(fix2400Time(timeEnumerator.Current.InnerHtml), "g", null);
                                 }
                             }
                         }
@@ -401,7 +407,7 @@ namespace MAVAppBackend
                                 if (timeEnumerator.MoveNext()) // On a <br>
                                 {
                                     timeEnumerator.MoveNext(); // On the second text block in a span containing expected departure
-                                    expectedDeparture = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                                    expectedDeparture = TimeSpan.ParseExact(fix2400Time(timeEnumerator.Current.InnerHtml), "g", null);
                                 }
                             }
                         }
@@ -480,11 +486,11 @@ namespace MAVAppBackend
                             {
                                 IEnumerator<HtmlNode> timeEnumerator = tdEnumerator.Current.Descendants().GetEnumerator();
                                 timeEnumerator.MoveNext(); // On the first text block contatining scheduled arrival
-                                arrival = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                                arrival = TimeSpan.ParseExact(fix2400Time(timeEnumerator.Current.InnerHtml), "g", null);
                                 if (timeEnumerator.MoveNext()) // On a <br>
                                 {
                                     timeEnumerator.MoveNext(); // On the second text block in a span containing expected arrival
-                                    expectedArrival = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                                    expectedArrival = TimeSpan.ParseExact(fix2400Time(timeEnumerator.Current.InnerHtml), "g", null);
                                 }
                                 else expectedArrival = arrival;
                             }
@@ -506,11 +512,11 @@ namespace MAVAppBackend
                             {
                                 IEnumerator<HtmlNode> timeEnumerator = tdEnumerator.Current.Descendants().GetEnumerator();
                                 timeEnumerator.MoveNext(); // On the first text block contatining scheduled departure
-                                departure = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                                departure = TimeSpan.ParseExact(fix2400Time(timeEnumerator.Current.InnerHtml), "g", null);
                                 if (timeEnumerator.MoveNext()) // On a <br>
                                 {
                                     timeEnumerator.MoveNext(); // On the second text block in a span containing expected departure
-                                    expectedDeparture = TimeSpan.ParseExact(timeEnumerator.Current.InnerHtml, "g", null);
+                                    expectedDeparture = TimeSpan.ParseExact(fix2400Time(timeEnumerator.Current.InnerHtml), "g", null);
                                 }
                                 else expectedDeparture = departure;
                             }
@@ -550,70 +556,76 @@ namespace MAVAppBackend
                     stations.Add(stationInfo);
                 }
 
-                int first = -1;
-                int second = -1;
-                Station firstPrec = null;
-                bool directionDetermined = false;
-                for (int i = 0; i < stations.Count; i++)
-                {
-                    //Try to find precise data for this station
-                    Station s = Database.GetStation(stations[i].Name);
-                    if (s != null)
-                    {
-                        // We have found the first station
-                        if (firstPrec == null)
-                        {
-                            first = i;
-                            firstPrec = s;
-                        }
-                        // We have found the second station
-                        else if (!directionDetermined)
-                        {
-                            second = i;
 
-                            //The second station is before the first in distance => flip the line because it's wrong
-                            if (Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(s.GPSCoord)) < Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(firstPrec.GPSCoord)))
+                if (determineDirection())
+                {
+                    int firstFound = -1;
+                    for (int i = 0; i < stations.Count; i++)
+                    {
+                        if (stations[i].IntDistance != -1)
+                        {
+                            Station st = Database.GetStation(stations[i].Name);
+                            if (st != null) stations[i].UpdateStation(st);
+
+                            double dist = 0;
+                            if (st != null && !double.IsNaN(dist = Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(st.GPSCoord), Map.DefaultMap, 0.25)))
                             {
-                                Polyline = new Polyline(Polyline.Points.Reverse().ToList(), Polyline.Map);
+                                stations[i].UpdateDistanceInformation(dist, StationPositionAccuracy.Precise);
+                                if (firstFound == -1) firstFound = i;
                             }
-
-                            directionDetermined = true;
-
-                            stations[first].UpdateStation(firstPrec);
-                            stations[first].UpdateDistanceInformation(Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(firstPrec.GPSCoord)), StationPositionAccuracy.Precise);
-                            stations[i].UpdateStation(s);
-                            stations[i].UpdateDistanceInformation(Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(s.GPSCoord)), StationPositionAccuracy.Precise);
-                        }
-                        else
-                        {
-                            // Update precise info if direction was found already
-                            stations[i].UpdateStation(s);
-                            stations[i].UpdateDistanceInformation(Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(s.GPSCoord)), StationPositionAccuracy.Precise);
+                            else if (!double.IsNaN(dist) && i > 0 && stations[i - 1].PositionAccuracy != StationPositionAccuracy.Missing)
+                            {
+                                stations[i].UpdateDistanceInformation(stations[i - 1].Distance + (stations[i].IntDistance - stations[i - 1].IntDistance), StationPositionAccuracy.IntegerPrecision);
+                            }
                         }
                     }
-                    // If the direction is determined we can at least do integer precision on all subsequent stations, provided integer distance is supplied
-                    else if (directionDetermined && stations[i - 1].IntDistance != -1 && stations[i].IntDistance != -1)
-                    {
-                        stations[i].UpdateDistanceInformation(stations[i - 1].Distance + (stations[i].IntDistance - stations[i - 1].IntDistance), StationPositionAccuracy.IntegerPrecision);
-                    }
-                    // Any other case it's missing (and it's the default)
-                }
 
-                // We could not determine the direction for certain => everything is marked missing
-                // But even if we did stations before the second could still be marked missing
-                if (directionDetermined)
-                {
-                    // Try to determine based on the next station and propagate backwards
-                    for (int i = second - 1; i >= 0; i--)
+                    for (int i = firstFound - 1; i >= 0; i--) // We do a reverse check as well so that we can figure out missing stations backwards from the first found
                     {
-                        if (stations[i].PositionAccuracy == StationPositionAccuracy.Missing && stations[i + 1].IntDistance != -1 && stations[i].IntDistance != -1)
+                        if (stations[i].IntDistance != -1
+                            && (stations[i].Station != null && !double.IsNaN(Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(stations[i].Station.GPSCoord), Map.DefaultMap, 0.05)))
+                            && stations[i].PositionAccuracy == StationPositionAccuracy.Missing)
                         {
                             stations[i].UpdateDistanceInformation(stations[i + 1].Distance - (stations[i + 1].IntDistance - stations[i].IntDistance), StationPositionAccuracy.IntegerPrecision);
                         }
-                        // Any other case it's still missing
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Determines the direction of the line and flips it neccesary.
+        /// </summary>
+        /// <returns>Whether the direction could be determined</returns>
+        private bool determineDirection()
+        {
+            double firstDist = double.NaN;
+            foreach (StationInfo station in stations)
+            {
+                if (station.IntDistance != -1)
+                {
+                    Station st = Database.GetStation(station.Name);
+                    double dist;
+                    if (st != null && !double.IsNaN(dist = Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(st.GPSCoord), Map.DefaultMap, 0.05)))
+                    {
+                        if (double.IsNaN(firstDist))
+                        {
+                            firstDist = dist;
+                        }
+                        else //if (double.IsNaN(secondDist))
+                        {
+                            if (dist < firstDist)
+                            {
+                                Polyline = new Polyline(Polyline.Points.Reverse().ToList());
+                            }
+
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -623,8 +635,16 @@ namespace MAVAppBackend
         public void UpdateTRAINS_API(TRAINSData trainsData)
         {
             Delay = trainsData.Delay;
-            LastGPSPosition = GPSPosition;
             GPSPosition = trainsData.GPSCoord;
+        }
+
+        /// <summary>
+        /// Clears the position field of the train and sets the last position to the cleared value
+        /// </summary>
+        public void ClearPosition()
+        {
+            LastGPSPosition = GPSPosition;
+            GPSPosition = null;
         }
 
         /// <summary>
@@ -648,7 +668,7 @@ namespace MAVAppBackend
                 foreach (StationInfo station in stations)
                 {
                     if (station.PositionAccuracy != StationPositionAccuracy.Missing)
-                        svg.DrawCircle(Polyline.GetPoint(station.Distance), 3, strokeColor: (station.PositionAccuracy == StationPositionAccuracy.Precise ? "green" : "red"), strokeWidth: 1);
+                        svg.DrawCircle(Polyline.GetPoint(station.Distance, Map.DefaultMap), 3, strokeColor: (station.PositionAccuracy == StationPositionAccuracy.Precise ? "green" : "red"), strokeWidth: 1);
                     else
                     {
                         Console.WriteLine(station.Name + " is missing positional data!");

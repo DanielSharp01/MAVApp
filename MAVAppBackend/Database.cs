@@ -172,7 +172,7 @@ namespace MAVAppBackend
             }
 
             train.UpdateTRAIN_API(apiResponse);
-            updateTrainToDB(train, false);
+            updateTrainToDB(train);
 
             return train;
         }
@@ -184,31 +184,44 @@ namespace MAVAppBackend
         /// <param name="newTrain">Insertable train who we also update, optional</param>
         public static void UpdateDynamicData(List<TRAINSData> trainsData)
         {
-            List<long> elapsedms = new List<long>();
+            trimNullTrains();
+            Dictionary<string, Train> trains = new Dictionary<string, Train>();
+            MySqlCommand cmd = new MySqlCommand("SELECT * FROM trains WHERE lat IS NOT NULL", connection);
+            MySqlDataReader reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                int id = reader.GetInt32("id");
+                string elviraID = reader.GetString("elvira_id"); // We trimmed all the nulls so there's no need for null checking
+
+                int delay = reader.GetInt32OrDefault("delay", 0);
+                Vector2 gpsPosition = reader.GetVector2OrNull("lat", "lon");
+                Vector2 lastGpsPosition = reader.GetVector2OrNull("last_lat", "last_lon");
+
+                trains.Add(elviraID, new Train(id, elviraID, null, null, null, null, delay, null, "", gpsPosition, lastGpsPosition, null, new List<StationInfo>()));
+            }
+            reader.Close();
+
+            foreach (KeyValuePair<string, Train> kvp in trains)
+            {
+                kvp.Value.ClearPosition();
+            }
+
             foreach (TRAINSData data in trainsData)
             {
-                
-                Train train = getTrainFromDB(data.ElviraID);
-                if (train == null) // If the train is unknown, insert a new one into the DB
+                Train train;
+                if (!trains.TryGetValue(data.ElviraID, out train))
                 {
                     if (!data.ElviraID.StartsWith("_") && data.ElviraID.Length > 7) train = new Train(data.ElviraID);
                     else train = new Train(null); // These trains are sort of untrackable but as long as we have train data they may be useful
 
-                    insertTrainToDB(train);
+                    trains.Add(train.ElviraID, train);
                 }
 
                 train.UpdateTRAINS_API(data);
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
-                updateTrainToDB(train, true);
-                sw.Stop();
-                elapsedms.Add(sw.ElapsedMilliseconds);
+                
             }
-            
-            foreach (long l in elapsedms)
-            {
-                Console.WriteLine(l);
-            }
+
+            updateTrainsAPIToDb(trains.Values.ToList());
         }
 
         /// <summary>
@@ -279,94 +292,109 @@ namespace MAVAppBackend
         }
 
         /// <summary>
-        /// Commit the changes of a train object to the database
+        /// Updates data from the TRAINS API into the database
+        /// </summary>
+        /// <param name="trains">List of train objects to commit into the database</param>
+        private static void updateTrainsAPIToDb(List<Train> trains)
+        {
+            if (trains.Count == 0) return;
+            string values = "";
+
+            for (int i = 0; i < trains.Count; i++)
+            {
+                values += $"(@id_{i}, @elvira_id_{i}, @lat_{i}, @lon_{i}, @last_lat_{i}, @last_lon_{i}, @delay_{i})";
+                if (i < trains.Count - 1) values += ", ";
+            }
+
+            MySqlCommand cmd = new MySqlCommand($"INSERT INTO trains (id, elvira_id, lat, lon, last_lat, last_lon, delay) VALUES {values} ON DUPLICATE KEY UPDATE `elvira_id` = values(`elvira_id`), `lat` = values(`lat`), `lon` = values(`lon`), `delay` = values(`delay`), `last_lat` = values(`last_lat`), `last_lon` = values(`last_lon`)", connection);
+            for (int i = 0; i < trains.Count; i++)
+            {
+                if (trains[i].ID == -1) cmd.Parameters.AddWithValue($"@id_{i}", null);
+                else cmd.Parameters.AddWithValue($"@id_{i}", trains[i].ID);
+                cmd.Parameters.AddWithValue($"@elvira_id_{i}", trains[i].ElviraID);
+                cmd.Parameters.AddVector2WithValue($"@lat_{i}", $"@lon_{i}", trains[i].GPSPosition);
+                cmd.Parameters.AddVector2WithValue($"@last_lat_{i}", $"@last_lon_{i}", trains[i].LastGPSPosition);
+                cmd.Parameters.AddWithValue($"@delay_{i}", trains[i].Delay);
+            }
+
+            cmd.Prepare();
+            cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>
+        /// Commit the changes of a train object to the database. This should only be used when updating by the TRAIN API
         /// </summary>
         /// <param name="train">Train object to update</param>
-        /// <param name="trainsAPI">Changes are TRAIN (false) or TRAINS API (true) related</param>
-        private static void updateTrainToDB(Train train, bool trainsAPI)
+        private static void updateTrainToDB(Train train)
         {
-            MySqlCommand cmd;
-            if (trainsAPI)
+            MySqlCommand cmd = new MySqlCommand("SELECT enc_polyline FROM trains WHERE id = @id", connection);
+            cmd.Parameters.AddWithValue("@id", train.ID);
+            cmd.Prepare();
+            MySqlDataReader reader = cmd.ExecuteReader();
+            reader.Read();
+            bool insertingNewData = reader.IsDBNull(reader.GetOrdinal("enc_polyline")); //updating everything not just potential changes
+            reader.Close();
+
+            if (insertingNewData)
             {
-                cmd = new MySqlCommand("UPDATE trains SET lat = @lat, `lon` = @lon, delay = @delay, last_lat = @last_lat, last_lon = @last_lon WHERE id = @id", connection);
+                cmd = new MySqlCommand("UPDATE trains SET number = @number, name = @name, type = @type, number_type = @number_type, delay_reason = @delay_reason, misc_info = @misc_info, enc_polyline = @enc_polyline WHERE id = @id", connection);
                 cmd.Parameters.AddWithValue("@id", train.ID);
-                cmd.Parameters.AddVector2WithValue("lat", "lon", train.GPSPosition);
-                cmd.Parameters.AddVector2WithValue("last_lat", "last_lon", train.LastGPSPosition);
-                cmd.Parameters.AddWithValue("@delay", train.Delay);
+                cmd.Parameters.AddWithValue("@number", train.Number);
+                cmd.Parameters.AddWithValue("@name", train.Name);
+                cmd.Parameters.AddWithValue("@type", train.Type);
+                cmd.Parameters.AddWithValue("@number_type", train.NumberType);
+                cmd.Parameters.AddWithValue("@delay_reason", train.DelayReason);
+                cmd.Parameters.AddWithValue("@misc_info", String.Join("\n", train.MiscInfo));
+                cmd.Parameters.AddWithValue("@enc_polyline", Polyline.EncodePoints(train.Polyline.Points.ToList(), 1E5f, Map.DefaultMap));
                 cmd.Prepare();
                 cmd.ExecuteNonQuery();
+
+                List<StationInfo> stations = train.Stations.ToList();
+                for (int i = 0; i < stations.Count; i++)
+                {
+                    cmd = new MySqlCommand("INSERT INTO train_stations VALUES (@train_id, @number, @station, @mav_name, @int_distance, @distance, @position_accuracy," +
+                        "@arrive, @depart, @arrive_actual, @depart_actual, @arrived, @platform)", connection);
+                    cmd.Parameters.AddWithValue("@train_id", train.ID);
+                    cmd.Parameters.AddWithValue("@number", i + 1);
+
+                    if (stations[i].Station == null) cmd.Parameters.AddWithValue("@station", null);
+                    else cmd.Parameters.AddWithValue("@station", stations[i].Station.ID);
+                    cmd.Parameters.AddWithValue("@mav_name", stations[i].Name);
+                    cmd.Parameters.AddWithValue("@int_distance", stations[i].IntDistance);
+                    cmd.Parameters.AddWithValue("@distance", stations[i].Distance);
+                    cmd.Parameters.AddWithValue("@position_accuracy", stations[i].PositionAccuracy == StationPositionAccuracy.Missing ? 0
+                                                                        : (stations[i].PositionAccuracy == StationPositionAccuracy.IntegerPrecision ? 1 : 2));
+                    cmd.Parameters.AddWithValue("@arrive", stations[i].Arrival);
+                    cmd.Parameters.AddWithValue("@depart", stations[i].Departure);
+                    cmd.Parameters.AddWithValue("@arrive_actual", stations[i].ExpectedArrival);
+                    cmd.Parameters.AddWithValue("@depart_actual", stations[i].ExpectedDeparture);
+                    cmd.Parameters.AddWithValue("@arrived", stations[i].Arrived);
+                    cmd.Parameters.AddWithValue("@platform", stations[i].Platform);
+                    cmd.Prepare();
+                    cmd.ExecuteNonQuery();
+                }
             }
             else
             {
-                cmd = new MySqlCommand("SELECT enc_polyline FROM trains WHERE id = @id", connection);
+                cmd = new MySqlCommand("UPDATE trains SET delay_reason = @delay_reason WHERE id = @id", connection);
                 cmd.Parameters.AddWithValue("@id", train.ID);
+                cmd.Parameters.AddWithValue("@delay_reason", train.DelayReason);
                 cmd.Prepare();
-                MySqlDataReader reader = cmd.ExecuteReader();
-                reader.Read();
-                bool insertingNewData = reader.IsDBNull(reader.GetOrdinal("enc_polyline")); //updating everything not just changes
-                reader.Close();
+                cmd.ExecuteNonQuery();
 
-                if (insertingNewData)
+
+                List<StationInfo> stations = train.Stations.ToList();
+                for (int i = 0; i < stations.Count; i++)
                 {
-                    cmd = new MySqlCommand("UPDATE trains SET number = @number, name = @name, type = @type, number_type = @number_type, delay_reason = @delay_reason, misc_info = @misc_info, enc_polyline = @enc_polyline WHERE id = @id", connection);
-                    cmd.Parameters.AddWithValue("@id", train.ID);
-                    cmd.Parameters.AddWithValue("@number", train.Number);
-                    cmd.Parameters.AddWithValue("@name", train.Name);
-                    cmd.Parameters.AddWithValue("@type", train.Type);
-                    cmd.Parameters.AddWithValue("@number_type", train.NumberType);
-                    cmd.Parameters.AddWithValue("@delay_reason", train.DelayReason);
-                    cmd.Parameters.AddWithValue("@misc_info", String.Join("\n", train.MiscInfo));
-                    cmd.Parameters.AddWithValue("@enc_polyline", Polyline.EncodePoints(train.Polyline.Points.ToList(), 1E5f, Map.DefaultMap));
+                    cmd = new MySqlCommand("UPDATE train_stations SET arrive_actual = @arrive_actual, depart_actual = @depart_actual, arrived = @arrived, platform = @platform WHERE train_id = @train_id AND number = @number", connection);
+                    cmd.Parameters.AddWithValue("@train_id", train.ID);
+                    cmd.Parameters.AddWithValue("@number", i + 1);
+                    cmd.Parameters.AddWithValue("@arrive_actual", stations[i].ExpectedArrival);
+                    cmd.Parameters.AddWithValue("@depart_actual", stations[i].ExpectedDeparture);
+                    cmd.Parameters.AddWithValue("@arrived", stations[i].Arrived);
+                    cmd.Parameters.AddWithValue("@platform", stations[i].Platform);
                     cmd.Prepare();
                     cmd.ExecuteNonQuery();
-
-                    List<StationInfo> stations = train.Stations.ToList();
-                    for (int i = 0; i < stations.Count; i++)
-                    {
-                        cmd = new MySqlCommand("INSERT INTO train_stations VALUES (@train_id, @number, @station, @mav_name, @int_distance, @distance, @position_accuracy," +
-                            "@arrive, @depart, @arrive_actual, @depart_actual, @arrived, @platform)", connection);
-                        cmd.Parameters.AddWithValue("@train_id", train.ID);
-                        cmd.Parameters.AddWithValue("@number", i + 1);
-
-                        if (stations[i].Station == null) cmd.Parameters.AddWithValue("@station", null);
-                        else cmd.Parameters.AddWithValue("@station", stations[i].Station.ID);
-                        cmd.Parameters.AddWithValue("@mav_name", stations[i].Name);
-                        cmd.Parameters.AddWithValue("@int_distance", stations[i].IntDistance);
-                        cmd.Parameters.AddWithValue("@distance", stations[i].Distance);
-                        cmd.Parameters.AddWithValue("@position_accuracy", stations[i].PositionAccuracy == StationPositionAccuracy.Missing ? 0
-                                                                           : (stations[i].PositionAccuracy == StationPositionAccuracy.IntegerPrecision ? 1 : 2));
-                        cmd.Parameters.AddWithValue("@arrive", stations[i].Arrival);
-                        cmd.Parameters.AddWithValue("@depart", stations[i].Departure);
-                        cmd.Parameters.AddWithValue("@arrive_actual", stations[i].ExpectedArrival);
-                        cmd.Parameters.AddWithValue("@depart_actual", stations[i].ExpectedDeparture);
-                        cmd.Parameters.AddWithValue("@arrived", stations[i].Arrived);
-                        cmd.Parameters.AddWithValue("@platform", stations[i].Platform);
-                        cmd.Prepare();
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-                else
-                {
-                    cmd = new MySqlCommand("UPDATE trains SET delay_reason = @delay_reason WHERE id = @id", connection);
-                    cmd.Parameters.AddWithValue("@id", train.ID);
-                    cmd.Parameters.AddWithValue("@delay_reason", train.DelayReason);
-                    cmd.Prepare();
-                    cmd.ExecuteNonQuery();
-
-
-                    List<StationInfo> stations = train.Stations.ToList();
-                    for (int i = 0; i < stations.Count; i++)
-                    {
-                        cmd = new MySqlCommand("UPDATE train_stations SET arrive_actual = @arrive_actual, depart_actual = @depart_actual, arrived = @arrived, platform = @platform WHERE train_id = @train_id AND number = @number", connection);
-                        cmd.Parameters.AddWithValue("@train_id", train.ID);
-                        cmd.Parameters.AddWithValue("@number", i + 1);
-                        cmd.Parameters.AddWithValue("@arrive_actual", stations[i].ExpectedArrival);
-                        cmd.Parameters.AddWithValue("@depart_actual", stations[i].ExpectedDeparture);
-                        cmd.Parameters.AddWithValue("@arrived", stations[i].Arrived);
-                        cmd.Parameters.AddWithValue("@platform", stations[i].Platform);
-                        cmd.Prepare();
-                        cmd.ExecuteNonQuery();
-                    }
                 }
             }
         }
@@ -397,6 +425,9 @@ namespace MAVAppBackend
             yield break;
         }
 
+        /// <summary>
+        /// Closes database connection
+        /// </summary>
         public static void Terminate()
         {
             connection.Close();

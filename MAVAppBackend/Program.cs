@@ -54,17 +54,17 @@ namespace MAVAppBackend
                 SVGStream svg = new SVGStream(@"C:\Users\DanielSharp\Desktop\test.svg", 1920, 1080);
                 svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
                 train.PrintIntoSVG(svg);
-                svg.DrawCircle(Map.DefaultMap.FromLatLon(MAVAPI.RequestTrains().Find(d => d.ElviraID == elviraID).GPSCoord), 5, "red", "yellow", 1);
+                if (train.GPSPosition != null) svg.DrawCircle(Map.DefaultMap.FromLatLon(train.GPSPosition), 3, "red", "yellow", 1);
 
                 svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
 
-                Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap), Map.DefaultMap);
+                Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap));
                 svg.DrawPolyline(polyline, "black", 1, true);
 
-                /*foreach (Station station in Database.GetAllStations())
+                foreach (Station station in Database.GetAllStations())
                 {
                     svg.DrawCircle(Map.DefaultMap.FromLatLon(station.GPSCoord), 1, "green");
-                }*/
+                }
 
                 svg.Close();
             }
@@ -75,7 +75,7 @@ namespace MAVAppBackend
             SVGStream svg = new SVGStream(@"C:\Users\DanielSharp\Desktop\test.svg", 1920, 1080);
             svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
 
-            Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap), Map.DefaultMap);
+            Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap));
             svg.DrawPolyline(polyline, "black", 1, true);
 
             foreach (Station station in Database.GetAllStations())

@@ -16,6 +16,10 @@ namespace MAVAppBackend
         /// Writer writing to the SVG file
         /// </summary>
         private StreamWriter writer;
+
+        /// <summary>
+        /// Will be applied to all elements drawn (NOTE: has to be set before the draw call and draw calls won't track the change of this variable after they are issued)
+        /// </summary>
         public Vector2 Offset
         {
             private set;

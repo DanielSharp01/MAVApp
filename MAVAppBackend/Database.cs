@@ -2,16 +2,101 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace MAVAppBackend
 {
+    public static class MySQLExtensions
+    {
+        /// <summary>
+        /// Gets the value of a specified column as a string object, allowing null.
+        /// </summary>
+        /// <param name="columnName">The column name</param>
+        public static string GetStringOrNull(this MySqlDataReader reader, string columnName)
+        {
+            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? null : reader.GetString(columnName);
+        }
+
+        /// <summary>
+        /// Gets the value of a specified column as a string object. When null the default value is used instead.
+        /// </summary>
+        /// <param name="columnName">The column name</param>
+        /// <param name="default">Default string to return if column is null</param>
+        /// <returns>String at columnName if not null, default otherwise</returns>
+        public static string GetStringOrDefault(this MySqlDataReader reader, string columnName, string @default)
+        {
+            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? @default : reader.GetString(columnName);
+        }
+
+        /// <summary>
+        /// Gets the value of a specified column as an integer. When null the default value is used instead.
+        /// </summary>
+        /// <param name="columnName">The column name</param>
+        /// <param name="default">Default integer to return if column is null</param>
+        /// <returns>Integer at columnName if not null, default otherwise</returns>
+        public static int GetInt32OrDefault(this MySqlDataReader reader, string columnName, int @default)
+        {
+            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? @default : reader.GetInt32(columnName);
+        }
+
+        /// <summary>
+        /// Gets the value of 2 double columns converted into a Vector2 object.
+        /// </summary>
+        /// <param name="xCoordName">Column name of the .X coordinate</param>
+        /// <param name="yCoordName">Column name of the .Y coordinate</param>
+        /// <returns></returns>
+        public static Vector2 GetVector2OrNull(this MySqlDataReader reader, string xCoordName, string yCoordName)
+        {
+            if (reader.IsDBNull(reader.GetOrdinal(xCoordName)) || reader.IsDBNull(reader.GetOrdinal(yCoordName))) return null;
+            else return new Vector2(reader.GetDouble(xCoordName), reader.GetDouble(yCoordName));
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether the MySQLDataReader contains one or more rows. If it contains no rows it also closes the connection.
+        /// </summary>
+        /// <returns>True if the MySQLDataReader contains one or more rows, false otherwise</returns>
+        public static bool HasRowsOrClose(this MySqlDataReader reader)
+        {
+            if (reader.HasRows) return true;
+            reader.Close();
+            return false;
+        }
+
+        /// <summary>
+        /// Adds two double parameters with the value of a single Vector2.
+        /// </summary> 
+        /// <param name="xCoordName">Parameter name of the .X coordinate</param>
+        /// <param name="yCoordName">Parameter name of the .Y coordinate</param>
+        /// <param name="value">Value to add</param>
+        public static void AddVector2WithValue(this MySqlParameterCollection parameters, string xCoordName, string yCoordName, Vector2 value)
+        {
+            if (value == null)
+            {
+                parameters.AddWithValue(xCoordName, null);
+                parameters.AddWithValue(yCoordName, null);
+            }
+            else
+            {
+                parameters.AddWithValue(xCoordName, value.X);
+                parameters.AddWithValue(yCoordName, value.Y);
+            }
+            
+        }
+    }
+
     public class Database
     {
+        /// <summary>
+        /// MySQL connection used throughout the application
+        /// </summary>
         private static MySqlConnection connection;
 
+        /// <summary>
+        /// Initializes MySQL data connection
+        /// </summary>
         public static void Initialize()
         {
             connection = new MySqlConnection("Host=127.0.0.1;Database=mavapp;UserName=root;Password=mysql");
@@ -19,7 +104,7 @@ namespace MAVAppBackend
         }
 
         /// <summary>
-        /// Normalizes a station name (removes Hungarian accents, replaces hyphens with spaces, removes redundant information such as station)
+        /// Normalizes a station name for comparison (removes Hungarian accents, replaces hyphens with spaces, removes redundant information such as station)
         /// </summary>
         /// <param name="stationName">Name to normalize</param>
         /// <returns>Normalized version of the same name</returns>
@@ -61,9 +146,9 @@ namespace MAVAppBackend
             cmd.Parameters.AddWithValue("@norm_name", nn);
             cmd.Prepare();
             MySqlDataReader reader = cmd.ExecuteReader();
-            if (!reader.HasRows) return null;
+            if (!reader.HasRowsOrClose()) return null;
             reader.Read();
-            Station s = new Station(reader.GetInt32("id"), reader.GetString("name"), new Vector2(reader.GetDouble("lat"), reader.GetDouble("long")));
+            Station s = new Station(reader.GetInt32("id"), reader.GetString("name"), new Vector2(reader.GetDouble("lat"), reader.GetDouble("lon")));
             reader.Close();
             return s;
         }
@@ -71,7 +156,7 @@ namespace MAVAppBackend
         /// <summary>
         /// Get train by ID
         /// </summary>
-        /// <param name="elviraID">Most unique ID used by MÁV</param>
+        /// <param name="elviraID">Unique ID used by MÁV</param>
         /// <returns></returns>
         public static Train GetTrain(string elviraID)
         {
@@ -82,69 +167,14 @@ namespace MAVAppBackend
                 if (apiResponse != null)
                 {
                     train = new Train(elviraID, apiResponse);
-                    UpdateDynanmicData(MAVAPI.RequestTrains(), train); // Request trains always the first time for accurate delay and positional information
                     insertTrainToDB(train);
                 }
             }
-            else // If the train already exists in the DB, we might still need to update it with the JSON from MÁV's API
-            {
-                train.UpdateTRAIN_API(apiResponse);
-                updateTrainToDB(train, false);
-            }
+
+            train.UpdateTRAIN_API(apiResponse);
+            updateTrainToDB(train, false);
 
             return train;
-        }
-
-        private static Train getTrainFromDB(string elviraID)
-        {
-            MySqlCommand cmd = new MySqlCommand("SELECT * FROM trains WHERE elvira_id = @elvira_id", connection);
-            cmd.Parameters.AddWithValue("@elvira_id", elviraID);
-            cmd.Prepare();
-            MySqlDataReader reader = cmd.ExecuteReader();
-            if (!reader.HasRows)
-            {
-                reader.Close();
-                return null;
-            }
-            reader.Read();
-
-            int id = reader.GetInt32("id");
-            string number = reader.IsDBNull(reader.GetOrdinal("number")) ? null : reader.GetString("number");
-            string name = reader.IsDBNull(reader.GetOrdinal("name")) ? null : reader.GetString("name");
-            string type = reader.IsDBNull(reader.GetOrdinal("type")) ? null : reader.GetString("type");
-            string numberType = reader.IsDBNull(reader.GetOrdinal("number_type")) ? null : reader.GetString("number_type");
-            string delayReason = reader.IsDBNull(reader.GetOrdinal("delay_reason")) ? null : reader.GetString("delay_reason");
-            string encPolyline = reader.GetString("enc_polyline");
-
-            Vector2 gpsPosition;
-            if (reader.IsDBNull(reader.GetOrdinal("lat")) || reader.IsDBNull(reader.GetOrdinal("long")))
-            {
-                gpsPosition = null;
-            }
-            else
-            {
-                gpsPosition = new Vector2(reader.GetDouble("lat"), reader.GetDouble("long"));
-            }
-
-            reader.Close();
-
-            List<StationInfo> stations = new List<StationInfo>();
-            cmd = new MySqlCommand("SELECT * FROM train_stations LEFT JOIN stations ON station = stations.id WHERE train_id = @id ORDER BY number ASC", connection);
-            cmd.Parameters.AddWithValue("@id", id);
-            cmd.Prepare();
-            reader = cmd.ExecuteReader();
-            while (reader.Read())
-            {
-                stations.Add(new StationInfo(reader.IsDBNull(reader.GetOrdinal("station")) ? null : new Station(reader.GetInt32("id"), reader.GetString("name"), new Vector2(reader.GetDouble("lat"), reader.GetDouble("long"))),
-                    reader.GetString("mav_name"), reader.GetInt32("int_distance"), reader.GetDouble("distance"), reader.GetInt32("position_accuracy"), reader.GetDateTime("arrive"), reader.GetDateTime("depart"),
-                    reader.GetDateTime("arrive_actual"), reader.GetDateTime("depart_actual"), reader.GetBoolean("arrived"),
-                    reader.IsDBNull(reader.GetOrdinal("platform")) ? null : reader.GetString("platform")));
-            }
-            reader.Close();
-
-
-            Train t = new Train(id, elviraID, number, name, type, numberType, delayReason, encPolyline, gpsPosition, stations);
-            return t;
         }
 
         /// <summary>
@@ -152,121 +182,208 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="data">List of TRAINS API data</param>
         /// <param name="newTrain">Insertable train who we also update, optional</param>
-        public static void UpdateDynanmicData(List<TRAINSData> trainsData, Train newTrain = null)
+        public static void UpdateDynamicData(List<TRAINSData> trainsData)
         {
+            List<long> elapsedms = new List<long>();
             foreach (TRAINSData data in trainsData)
             {
-                if (newTrain != null && newTrain.ElviraID == data.ElviraID)
+                
+                Train train = getTrainFromDB(data.ElviraID);
+                if (train == null) // If the train is unknown, insert a new one into the DB
                 {
-                    newTrain.UpdateTRAINS_API(data);
+                    if (!data.ElviraID.StartsWith("_") && data.ElviraID.Length > 7) train = new Train(data.ElviraID);
+                    else train = new Train(null); // These trains are sort of untrackable but as long as we have train data they may be useful
+
+                    insertTrainToDB(train);
                 }
-                else
-                {
-                    Train train = getTrainFromDB(data.ElviraID);
-                    if (train != null) // If the train is known
-                    {
-                        train.UpdateTRAINS_API(data);
-                        updateTrainToDB(train, true);
-                    }
-                }
+
+                train.UpdateTRAINS_API(data);
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
+                updateTrainToDB(train, true);
+                sw.Stop();
+                elapsedms.Add(sw.ElapsedMilliseconds);
+            }
+            
+            foreach (long l in elapsedms)
+            {
+                Console.WriteLine(l);
             }
         }
 
+        /// <summary>
+        /// Gets a train from the database by MÁV's ID
+        /// </summary>
+        /// <param name="elviraID">Unique ID used by MÁV</param>
+        /// <returns></returns>
+        private static Train getTrainFromDB(string elviraID)
+        {
+            MySqlCommand cmd = new MySqlCommand("SELECT * FROM trains WHERE elvira_id = @elvira_id", connection);
+            cmd.Parameters.AddWithValue("@elvira_id", elviraID);
+            cmd.Prepare();
+            MySqlDataReader reader = cmd.ExecuteReader();
+            if (!reader.HasRowsOrClose()) return null;
+            reader.Read();
+            int id = reader.GetInt32("id");
+
+            //TRAIN data
+            string number = reader.GetStringOrNull("number");
+            string name = reader.GetStringOrNull("name");
+            string type = reader.GetStringOrNull("type");
+            string numberType = reader.GetStringOrNull("number_type");
+            string delayReason = reader.GetStringOrNull("delay_reason");
+            string miscInfo = reader.GetStringOrDefault("delay_reason", "");
+            string encPolyline = reader.GetStringOrNull("enc_polyline");
+
+            // TRAINS data
+            int delay = reader.GetInt32OrDefault("delay", 0); 
+            Vector2 gpsPosition = reader.GetVector2OrNull("lat", "lon");
+            Vector2 lastGpsPosition = reader.GetVector2OrNull("last_lat", "last_lon");
+
+            reader.Close();
+
+            // TRAIN data - station infos
+            List<StationInfo> stations = new List<StationInfo>();
+            if (encPolyline != null) // Aka. no train data, as polyline is always supplied
+            {
+                cmd = new MySqlCommand("SELECT * FROM train_stations LEFT JOIN stations ON station = stations.id WHERE train_id = @id ORDER BY number ASC", connection);
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.Prepare();
+                reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    stations.Add(new StationInfo(reader.IsDBNull(reader.GetOrdinal("station")) ? null : new Station(reader.GetInt32("id"), reader.GetString("name"), new Vector2(reader.GetDouble("lat"), reader.GetDouble("lon"))),
+                        reader.GetString("mav_name"), reader.GetInt32("int_distance"), reader.GetDouble("distance"), reader.GetInt32("position_accuracy"), reader.GetDateTime("arrive"), reader.GetDateTime("depart"),
+                        reader.GetDateTime("arrive_actual"), reader.GetDateTime("depart_actual"), reader.GetBoolean("arrived"),
+                        reader.IsDBNull(reader.GetOrdinal("platform")) ? null : reader.GetString("platform")));
+                }
+                reader.Close();
+            }
+
+            Train t = new Train(id, elviraID, number, name, type, numberType, delay, delayReason, miscInfo, gpsPosition, lastGpsPosition, encPolyline, stations);
+            return t;
+        }
+
+        /// <summary>
+        /// Insert a brand new train into the database, only elvira_id will be inserted
+        /// </summary>
+        /// <param name="train">Train object to insert</param>
         private static void insertTrainToDB(Train train)
         {
-            MySqlCommand cmd = new MySqlCommand("INSERT INTO trains VALUES (NULL, @elvira_id, @number, @name, @type, @number_type, @delay, @delay_reason, @lat, @long, @enc_polyline)", connection);
+            MySqlCommand cmd = new MySqlCommand("INSERT INTO trains (elvira_id) VALUES (@elvira_id)", connection);
             cmd.Parameters.AddWithValue("@elvira_id", train.ElviraID);
-            cmd.Parameters.AddWithValue("@number", train.Number);
-            cmd.Parameters.AddWithValue("@name", train.Name);
-            cmd.Parameters.AddWithValue("@type", train.Type);
-            cmd.Parameters.AddWithValue("@number_type", train.NumberType);
-            if (train.GPSPosition == null)
-            {
-                cmd.Parameters.AddWithValue("@lat", null);
-                cmd.Parameters.AddWithValue("@long", null);
-            }
-            else
-            {
-                cmd.Parameters.AddWithValue("@lat", train.GPSPosition.X);
-                cmd.Parameters.AddWithValue("@long", train.GPSPosition.Y);
-            }
-            cmd.Parameters.AddWithValue("@delay", train.Delay);
-            cmd.Parameters.AddWithValue("@delay_reason", train.DelayReason);
-            cmd.Parameters.AddWithValue("@enc_polyline", Polyline.EncodePoints(train.Polyline.Points.ToList(), 1E5f, Map.DefaultMap));
             cmd.Prepare();
             cmd.ExecuteNonQuery();
             long id = cmd.LastInsertedId;
             train.SetDBId((int)id);
-
-            List<StationInfo> stations = train.Stations.ToList();
-            for (int i = 0; i < stations.Count; i++)
-            {
-                cmd = new MySqlCommand("INSERT INTO train_stations VALUES (@train_id, @number, @station, @mav_name, @int_distance, @distance, @position_accuracy," +
-                    "@arrive, @depart, @arrive_actual, @depart_actual, @arrived, @platform)", connection);
-                cmd.Parameters.AddWithValue("@train_id", id);
-                cmd.Parameters.AddWithValue("@number", i + 1);
-                cmd.Parameters.AddWithValue("@station", stations[i].Station.ID);
-                cmd.Parameters.AddWithValue("@mav_name", stations[i].Name);
-                cmd.Parameters.AddWithValue("@int_distance", stations[i].IntDistance);
-                cmd.Parameters.AddWithValue("@distance", stations[i].Distance);
-                cmd.Parameters.AddWithValue("@position_accuracy", stations[i].PositionAccuracy == StationPositionAccuracy.Missing ? 0
-                                                                   : (stations[i].PositionAccuracy == StationPositionAccuracy.IntegerPrecision ? 1 : 2));
-                cmd.Parameters.AddWithValue("@arrive", stations[i].Arrival);
-                cmd.Parameters.AddWithValue("@depart", stations[i].Departure);
-                cmd.Parameters.AddWithValue("@arrive_actual", stations[i].ExpectedArrival);
-                cmd.Parameters.AddWithValue("@depart_actual", stations[i].ExpectedDeparture);
-                cmd.Parameters.AddWithValue("@arrived", stations[i].Arrived);
-                cmd.Parameters.AddWithValue("@platform", stations[i].Platform);
-                cmd.Prepare();
-                cmd.ExecuteNonQuery();
-            }
         }
 
+        /// <summary>
+        /// Commit the changes of a train object to the database
+        /// </summary>
+        /// <param name="train">Train object to update</param>
+        /// <param name="trainsAPI">Changes are TRAIN (false) or TRAINS API (true) related</param>
         private static void updateTrainToDB(Train train, bool trainsAPI)
         {
             MySqlCommand cmd;
             if (trainsAPI)
             {
-                cmd = new MySqlCommand("UPDATE trains SET lat = @lat, `long` = @long, delay = @delay WHERE id = @id", connection);
+                cmd = new MySqlCommand("UPDATE trains SET lat = @lat, `lon` = @lon, delay = @delay, last_lat = @last_lat, last_lon = @last_lon WHERE id = @id", connection);
                 cmd.Parameters.AddWithValue("@id", train.ID);
-                if (train.GPSPosition == null)
-                {
-                    cmd.Parameters.AddWithValue("@lat", null);
-                    cmd.Parameters.AddWithValue("@long", null);
-                }
-                else
-                {
-                    cmd.Parameters.AddWithValue("@lat", train.GPSPosition.X);
-                    cmd.Parameters.AddWithValue("@long", train.GPSPosition.Y);
-                }
+                cmd.Parameters.AddVector2WithValue("lat", "lon", train.GPSPosition);
+                cmd.Parameters.AddVector2WithValue("last_lat", "last_lon", train.LastGPSPosition);
                 cmd.Parameters.AddWithValue("@delay", train.Delay);
                 cmd.Prepare();
                 cmd.ExecuteNonQuery();
             }
             else
             {
-                cmd = new MySqlCommand("UPDATE trains SET delay_reason = @delay_reason WHERE id = @id", connection);
+                cmd = new MySqlCommand("SELECT enc_polyline FROM trains WHERE id = @id", connection);
                 cmd.Parameters.AddWithValue("@id", train.ID);
-                cmd.Parameters.AddWithValue("@delay_reason", train.DelayReason);
                 cmd.Prepare();
-                cmd.ExecuteNonQuery();
+                MySqlDataReader reader = cmd.ExecuteReader();
+                reader.Read();
+                bool insertingNewData = reader.IsDBNull(reader.GetOrdinal("enc_polyline")); //updating everything not just changes
+                reader.Close();
 
-                List<StationInfo> stations = train.Stations.ToList();
-                for (int i = 0; i < stations.Count; i++)
+                if (insertingNewData)
                 {
-                    cmd = new MySqlCommand("UPDATE train_stations SET arrive_actual = @arrive_actual, depart_actual = @depart_actual, arrived = @arrived, platform = @platform WHERE train_id = @train_id AND number = @number", connection);
-                    cmd.Parameters.AddWithValue("@train_id", train.ID);
-                    cmd.Parameters.AddWithValue("@number", i + 1);
-                    cmd.Parameters.AddWithValue("@arrive_actual", stations[i].ExpectedArrival);
-                    cmd.Parameters.AddWithValue("@depart_actual", stations[i].ExpectedDeparture);
-                    cmd.Parameters.AddWithValue("@arrived", stations[i].Arrived);
-                    cmd.Parameters.AddWithValue("@platform", stations[i].Platform);
+                    cmd = new MySqlCommand("UPDATE trains SET number = @number, name = @name, type = @type, number_type = @number_type, delay_reason = @delay_reason, misc_info = @misc_info, enc_polyline = @enc_polyline WHERE id = @id", connection);
+                    cmd.Parameters.AddWithValue("@id", train.ID);
+                    cmd.Parameters.AddWithValue("@number", train.Number);
+                    cmd.Parameters.AddWithValue("@name", train.Name);
+                    cmd.Parameters.AddWithValue("@type", train.Type);
+                    cmd.Parameters.AddWithValue("@number_type", train.NumberType);
+                    cmd.Parameters.AddWithValue("@delay_reason", train.DelayReason);
+                    cmd.Parameters.AddWithValue("@misc_info", String.Join("\n", train.MiscInfo));
+                    cmd.Parameters.AddWithValue("@enc_polyline", Polyline.EncodePoints(train.Polyline.Points.ToList(), 1E5f, Map.DefaultMap));
                     cmd.Prepare();
                     cmd.ExecuteNonQuery();
+
+                    List<StationInfo> stations = train.Stations.ToList();
+                    for (int i = 0; i < stations.Count; i++)
+                    {
+                        cmd = new MySqlCommand("INSERT INTO train_stations VALUES (@train_id, @number, @station, @mav_name, @int_distance, @distance, @position_accuracy," +
+                            "@arrive, @depart, @arrive_actual, @depart_actual, @arrived, @platform)", connection);
+                        cmd.Parameters.AddWithValue("@train_id", train.ID);
+                        cmd.Parameters.AddWithValue("@number", i + 1);
+
+                        if (stations[i].Station == null) cmd.Parameters.AddWithValue("@station", null);
+                        else cmd.Parameters.AddWithValue("@station", stations[i].Station.ID);
+                        cmd.Parameters.AddWithValue("@mav_name", stations[i].Name);
+                        cmd.Parameters.AddWithValue("@int_distance", stations[i].IntDistance);
+                        cmd.Parameters.AddWithValue("@distance", stations[i].Distance);
+                        cmd.Parameters.AddWithValue("@position_accuracy", stations[i].PositionAccuracy == StationPositionAccuracy.Missing ? 0
+                                                                           : (stations[i].PositionAccuracy == StationPositionAccuracy.IntegerPrecision ? 1 : 2));
+                        cmd.Parameters.AddWithValue("@arrive", stations[i].Arrival);
+                        cmd.Parameters.AddWithValue("@depart", stations[i].Departure);
+                        cmd.Parameters.AddWithValue("@arrive_actual", stations[i].ExpectedArrival);
+                        cmd.Parameters.AddWithValue("@depart_actual", stations[i].ExpectedDeparture);
+                        cmd.Parameters.AddWithValue("@arrived", stations[i].Arrived);
+                        cmd.Parameters.AddWithValue("@platform", stations[i].Platform);
+                        cmd.Prepare();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                else
+                {
+                    cmd = new MySqlCommand("UPDATE trains SET delay_reason = @delay_reason WHERE id = @id", connection);
+                    cmd.Parameters.AddWithValue("@id", train.ID);
+                    cmd.Parameters.AddWithValue("@delay_reason", train.DelayReason);
+                    cmd.Prepare();
+                    cmd.ExecuteNonQuery();
+
+
+                    List<StationInfo> stations = train.Stations.ToList();
+                    for (int i = 0; i < stations.Count; i++)
+                    {
+                        cmd = new MySqlCommand("UPDATE train_stations SET arrive_actual = @arrive_actual, depart_actual = @depart_actual, arrived = @arrived, platform = @platform WHERE train_id = @train_id AND number = @number", connection);
+                        cmd.Parameters.AddWithValue("@train_id", train.ID);
+                        cmd.Parameters.AddWithValue("@number", i + 1);
+                        cmd.Parameters.AddWithValue("@arrive_actual", stations[i].ExpectedArrival);
+                        cmd.Parameters.AddWithValue("@depart_actual", stations[i].ExpectedDeparture);
+                        cmd.Parameters.AddWithValue("@arrived", stations[i].Arrived);
+                        cmd.Parameters.AddWithValue("@platform", stations[i].Platform);
+                        cmd.Prepare();
+                        cmd.ExecuteNonQuery();
+                    }
                 }
             }
         }
 
+        /// <summary>
+        /// Delete all trains which have a null as their elvira_id
+        /// </summary>
+        private static void trimNullTrains()
+        {
+            MySqlCommand cmd = new MySqlCommand("DELETE FROM trains WHERE elvira_id = NULL", connection);
+            cmd.ExecuteNonQuery();
+        }
+
+        /// <summary>
+        /// Get all static station information from the database (useful for printing the all)
+        /// </summary>
+        /// <returns></returns>
         public static IEnumerable<Station> GetAllStations()
         {
             List<Station> stations = new List<Station>();
@@ -274,7 +391,7 @@ namespace MAVAppBackend
             MySqlDataReader reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                yield return new Station(reader.GetInt32("id"), reader.GetString("name"), new Vector2(reader.GetDouble("lat"), reader.GetDouble("long")));
+                yield return new Station(reader.GetInt32("id"), reader.GetString("name"), new Vector2(reader.GetDouble("lat"), reader.GetDouble("lon")));
             }
             reader.Close();
             yield break;

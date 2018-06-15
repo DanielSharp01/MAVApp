@@ -59,12 +59,12 @@ namespace MAVAppBackend
                 svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
 
                 Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap), Map.DefaultMap);
-                svg.DrawPolyline(polyline, "black", 1);
+                svg.DrawPolyline(polyline, "black", 1, true);
 
-                foreach (Station station in Database.GetAllStations())
+                /*foreach (Station station in Database.GetAllStations())
                 {
                     svg.DrawCircle(Map.DefaultMap.FromLatLon(station.GPSCoord), 1, "green");
-                }
+                }*/
 
                 svg.Close();
             }
@@ -76,7 +76,7 @@ namespace MAVAppBackend
             svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
 
             Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap), Map.DefaultMap);
-            svg.DrawPolyline(polyline, "black", 1);
+            svg.DrawPolyline(polyline, "black", 1, true);
 
             foreach (Station station in Database.GetAllStations())
             {
@@ -91,9 +91,11 @@ namespace MAVAppBackend
             Console.OutputEncoding = Encoding.UTF8;
             Database.Initialize();
 
-            printTrainTest();
+            Database.UpdateDynamicData(MAVAPI.RequestTrains());
 
+            printTrainTest();
             Database.Terminate();
+
             Console.WriteLine("Program ended...");
             Console.ReadLine();
         }

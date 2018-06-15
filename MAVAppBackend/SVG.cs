@@ -50,13 +50,14 @@ namespace MAVAppBackend
         /// <param name="line">Polyline to draw</param>
         /// <param name="strokeColor">Stroke color as HTML color string</param>
         /// <param name="strokeWidth">Stroke width of the polyline</param>
-        public void DrawPolyline(Polyline line, string strokeColor, double strokeWidth)
+        public void DrawPolyline(Polyline line, string strokeColor, double strokeWidth, bool closed = false)
         {
             writer.Write("<polyline points=\"");
             foreach (Vector2 p in line.Points)
             {
                 writer.Write((p + Offset) + " ");
             }
+            if (closed) writer.Write((line.Points.First() + Offset) + " ");
             writer.WriteLine($"\" style=\"fill: none; stroke: {strokeColor}; stroke-width:{strokeWidth}\" />");
         }
 

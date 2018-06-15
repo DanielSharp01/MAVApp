@@ -19,7 +19,7 @@ namespace MAVAppBackend
     public class TRAINSData
     {
         /// <summary>
-        /// Most unique ID used by MÁV
+        /// Unique ID used by MÁV
         /// </summary>
         public string ElviraID
         {

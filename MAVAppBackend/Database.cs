@@ -186,6 +186,7 @@ namespace MAVAppBackend
         {
             trimNullTrains();
             Dictionary<string, Train> trains = new Dictionary<string, Train>();
+            List<Train> nullTrains = new List<Train>();
             MySqlCommand cmd = new MySqlCommand("SELECT * FROM trains WHERE lat IS NOT NULL", connection);
             MySqlDataReader reader = cmd.ExecuteReader();
             while (reader.Read())
@@ -214,14 +215,15 @@ namespace MAVAppBackend
                     if (!data.ElviraID.StartsWith("_") && data.ElviraID.Length > 7) train = new Train(data.ElviraID);
                     else train = new Train(null); // These trains are sort of untrackable but as long as we have train data they may be useful
 
-                    trains.Add(train.ElviraID, train);
+                    if (train.ElviraID == null) nullTrains.Add(train);
+                    else trains.Add(train.ElviraID, train);
                 }
 
                 train.UpdateTRAINS_API(data);
                 
             }
 
-            updateTrainsAPIToDb(trains.Values.ToList());
+            updateTrainsAPIToDb(trains.Values.Union(nullTrains).ToList());
         }
 
         /// <summary>
@@ -404,7 +406,7 @@ namespace MAVAppBackend
         /// </summary>
         private static void trimNullTrains()
         {
-            MySqlCommand cmd = new MySqlCommand("DELETE FROM trains WHERE elvira_id = NULL", connection);
+            MySqlCommand cmd = new MySqlCommand("DELETE FROM trains WHERE elvira_id IS NULL", connection);
             cmd.ExecuteNonQuery();
         }
 

@@ -1,16 +1,13 @@
-﻿using HtmlAgilityPack;
-using MySql.Data.MySqlClient;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace MAVAppBackend
 {
@@ -21,53 +18,56 @@ namespace MAVAppBackend
         static void printTrainTest()
         {
             string elviraID = Console.ReadLine();
-            Train train = Database.GetTrain(elviraID);
-            if (train == null)
+            Train train = null;
+            try
+            {
+                train = Database.GetTrain(elviraID);
+            }
+            catch (MAVAPIException e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Could not resolve train with ID {elviraID}");
                 Console.ResetColor();
+                return;
             }
-            else
+
+            Console.WriteLine("Elvira ID: " + train.ElviraID);
+            Console.WriteLine("Train number: " + train.Number);
+            if (train.Name != null) Console.WriteLine("Train name: " + train.Name);
+            Console.WriteLine("Train type: " + train.Type);
+            if (train.NumberType != null) Console.WriteLine("Train number type: " + train.NumberType);
+            Console.WriteLine("Elvira ID: " + train.ElviraID);
+            Console.WriteLine(train.DelayReason);
+            if (train.MiscInfo.Any()) Console.WriteLine("Misc info:");
+            foreach (string info in train.MiscInfo)
             {
-                Console.WriteLine("Elvira ID: " + train.ElviraID);
-                Console.WriteLine("Train number: " + train.Number);
-                if (train.Name != null) Console.WriteLine("Train name: " + train.Name);
-                Console.WriteLine("Train type: " + train.Type);
-                if (train.NumberType != null) Console.WriteLine("Train number type: " + train.NumberType);
-                Console.WriteLine("Elvira ID: " + train.ElviraID);
-                Console.WriteLine(train.DelayReason);
-                if (train.MiscInfo.Any()) Console.WriteLine("Misc info:");
-                foreach (string info in train.MiscInfo)
-                {
-                    Console.WriteLine(info);
-                }
-
-                foreach (StationInfo station in train.Stations)
-                {
-                    Console.WriteLine($"{station.Name} - " + (station.IntDistance == -1 ? "distance unknown" : station.IntDistance + "km") + $" - Arrival: {station.Arrival.ToString("yyyy. MM. dd. HH:mm")};" +
-                        $"expected: {station.ExpectedArrival.ToString("yyyy. MM. dd. HH:mm")} - Departure: {station.Departure.ToString("yyyy. MM. dd. HH:mm")};" +
-                        $"expected: {station.ExpectedDeparture.ToString("yyyy. MM. dd. HH:mm")} - Platform: {station.Platform ?? "unknown"} - " + (station.Arrived ? "arrived" : "not arrived"));
-                }
-
-                
-                SVGStream svg = new SVGStream(@"C:\Users\DanielSharp\Desktop\test.svg", 1920, 1080);
-                svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
-                train.PrintIntoSVG(svg);
-                if (train.GPSPosition != null) svg.DrawCircle(Map.DefaultMap.FromLatLon(train.GPSPosition), 3, "red", "yellow", 1);
-
-                svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
-
-                Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap));
-                svg.DrawPolyline(polyline, "black", 1, true);
-
-                foreach (Station station in Database.GetAllStations())
-                {
-                    svg.DrawCircle(Map.DefaultMap.FromLatLon(station.GPSCoord), 1, "green");
-                }
-
-                svg.Close();
+                Console.WriteLine(info);
             }
+
+            foreach (StationInfo station in train.Stations)
+            {
+                Console.WriteLine($"{station.Name} - " + (station.IntDistance == -1 ? "distance unknown" : station.IntDistance + "km") + $" - Arrival: {station.Arrival.ToString("yyyy. MM. dd. HH:mm")};" +
+                    $"expected: {station.ExpectedArrival.ToString("yyyy. MM. dd. HH:mm")} - Departure: {station.Departure.ToString("yyyy. MM. dd. HH:mm")};" +
+                    $"expected: {station.ExpectedDeparture.ToString("yyyy. MM. dd. HH:mm")} - Platform: {station.Platform ?? "unknown"} - " + (station.Arrived ? "arrived" : "not arrived"));
+            }
+
+
+            SVGStream svg = new SVGStream(@"C:\Users\DanielSharp\Desktop\test.svg", 1920, 1080);
+            svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
+            train.PrintIntoSVG(svg);
+            if (train.GPSPosition != null) svg.DrawCircle(Map.DefaultMap.FromLatLon(train.GPSPosition), 3, "red", "yellow", 1);
+
+            svg.SetDrawOffset(new Vector2(1920 / 2, 1080 / 2));
+
+            Polyline polyline = new Polyline(Polyline.DecodePoints(hungarianBorderPolyline, 1E5f, Map.DefaultMap));
+            svg.DrawPolyline(polyline, "black", 1, true);
+
+            foreach (Station station in Database.GetAllStations())
+            {
+                svg.DrawCircle(Map.DefaultMap.FromLatLon(station.GPSCoord), 1, "green");
+            }
+
+            svg.Close();
         }
 
         static void printStationsTest()

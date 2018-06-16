@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS `stations` (
   `name` varchar(255) NOT NULL,
   `norm_name` varchar(255) NOT NULL,
   `lat` double NOT NULL,
-  `long` double NOT NULL,
+  `lon` double NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `norm_name` (`norm_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2050 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -31,19 +31,22 @@ CREATE TABLE IF NOT EXISTS `stations` (
 -- Dumping structure for table mavapp.trains
 CREATE TABLE IF NOT EXISTS `trains` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `elvira_id` varchar(50) NOT NULL,
+  `elvira_id` char(13) DEFAULT NULL,
   `number` varchar(50) DEFAULT NULL,
   `name` varchar(50) DEFAULT NULL,
-  `type` varchar(50) DEFAULT NULL,
+  `type` text,
   `number_type` varchar(50) DEFAULT NULL,
-  `delay` int(11) NOT NULL,
+  `delay` int(11) DEFAULT NULL,
   `delay_reason` text,
+  `misc_info` text COMMENT 'Every new line is a new row of information.',
   `lat` double DEFAULT NULL,
-  `long` double DEFAULT NULL,
-  `enc_polyline` text NOT NULL,
+  `lon` double DEFAULT NULL,
+  `last_lat` double DEFAULT NULL,
+  `last_lon` double DEFAULT NULL,
+  `enc_polyline` text,
   PRIMARY KEY (`id`),
   UNIQUE KEY `elvira_id` (`elvira_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4175 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Data exporting was unselected.
 -- Dumping structure for table mavapp.train_stations

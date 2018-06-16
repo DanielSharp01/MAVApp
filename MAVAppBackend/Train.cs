@@ -348,6 +348,9 @@ namespace MAVAppBackend
                 throw new MAVAPIException("Cannot parse train header.");
             }
 
+            if ((apiResponse["d"]["result"]["line"] as JArray).Count == 0)
+               throw new MAVAPIException("Cannot get train line.");
+
             bool hasTrainData = HasTRAINData; // Polyline will be defined in a second so that would skew our method
             // Polyline of the train path
             List<Vector2> points = Polyline.DecodePoints(apiResponse["d"]["result"]["line"][0]["points"].ToString(), 1E5f, Map.DefaultMap);

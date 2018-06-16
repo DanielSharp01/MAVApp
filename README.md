@@ -14,7 +14,7 @@ Depending on how much data is requested of a train (dynamic only/static only/bot
 
 ### Static only
 
-```json
+```js
 {
     id: 415
     elvira_id: "454845_180616"
@@ -30,10 +30,10 @@ Depending on how much data is requested of a train (dynamic only/static only/bot
 
 ### Dynamic only
 
-```json
+```js
 {
     id: 415
-    elvira_id: null <- may even be null
+    elvira_id: null
     delay: 4
     gps_coord {lat: 47.09868, lon: 18.37985}
     last_gps_coord: {lat: 47.15413667, lon: 18.40711667}
@@ -48,14 +48,14 @@ Both is obviously the combination of the two.
 
 Get train by MySQL ID. Preferred when ID is known.
 
-```json
+```js
 update: false/true
 data: "dynamic only"/"static only"/"both"
 ```
 
 ### Response
 
-```json
+```js
 {
     status: 200
     train: { ... TRAIN ... }
@@ -68,14 +68,14 @@ Updates from MÁV are not requestable. Can be filtered down to specific MySQL ID
 
 ### Request
 
-```json
+```js
 data: "dynamic only"/"static only"/"both"
 filter: [1, 2]
 ```
 
 ### Response
 
-```json
+```js
 {
     status: 200
     trains: {
@@ -91,14 +91,14 @@ Get train by MySQL ID. Preferred when ID is known.
 
 ### Request
 
-```json
+```js
 update: false/true
 data: "dynamic only"/"static only"/"both"
 ```
 
 ### Response
 
-```json
+```js
 {
     status: 200
     train: { ... TRAIN ... }
@@ -111,14 +111,14 @@ Updates from MÁV are not requestable. Can be filtered down to specific ElviraID
 
 ### Request
 
-```json
+```js
 data: "dynamic only"/"static only"/"both"
 filter: ["544584-180616", "1231231-180616"]
 ```
 
 ### Response
 
-```json
+```js
 {
     status: 200
     trains: {
@@ -132,7 +132,7 @@ filter: ["544584-180616", "1231231-180616"]
 
 Get the close stations in a given a radius to a latitude longitude
 
-```json
+```js
 lat: 49.54
 lon: 40.25
 radius: 0.5
@@ -140,7 +140,7 @@ radius: 0.5
 
 ### Response
 
-```json
+```js
 {
     status: 200
     stations: { 
@@ -155,7 +155,7 @@ radius: 0.5
 
 Get all trains (Elvira IDs) stopping between `time-from` and `time-to` at `station`.
 
-```json
+```js
 time-from: 1529170525
 time-to: 1529190525
 station: "Budapest-nyugati"
@@ -163,7 +163,7 @@ station: "Budapest-nyugati"
 
 ### Response
 
-```json
+```js
 {
     status: 200
     trains: {
@@ -177,7 +177,7 @@ station: "Budapest-nyugati"
 
 Get all train journeys (Elvira IDs per A -> B route) stopping between `time-from` and `time-to` at `from-station` and going to `to-station`.
 
-```json
+```js
 time-from: 1529170525
 time-to: 1529171525
 from-station: "Budapest-nyugati"
@@ -186,7 +186,7 @@ to-station: "Cegléd"
 
 ### Response
 
-```json
+```js
 {
     status: 200
     journeys: {

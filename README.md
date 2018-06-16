@@ -1,18 +1,24 @@
-# MÁV API Endpoints
+# MÁV APP Backend
 
-## Generally
+This project is an ASP.net core 2.0 based API for the Hungarian railway company (MÁV).
 
-Updates directly from MÁV are gonna be limited by the server itself. TRAINS will not be callable from the API and TRAIN will only be called on an object no older than 20 seconds.
+## MySQL table structure and static Station data
+
+Is contained in the tables.sql file in the root of the repository.
+
+## MÁV API Endpoints
+
+### Generally
 
 Requests can be obtained from (Body as json, Query, etc.).
 
 Response is json only.
 
-## Train object
+### Train object
 
 Depending on how much data is requested of a train (dynamic only/static only/both):
 
-### Static only
+#### Static only
 
 ```js
 {
@@ -28,7 +34,7 @@ Depending on how much data is requested of a train (dynamic only/static only/bot
 }
 ```
 
-### Dynamic only
+#### Dynamic only
 
 ```js
 {
@@ -42,9 +48,9 @@ Depending on how much data is requested of a train (dynamic only/static only/bot
 
 Both is obviously the combination of the two.
 
-## /dbtrain/[id : int]/
+### /dbtrain/[id : int]/
 
-### Request
+#### Request
 
 Get train by MySQL ID. Preferred when ID is known.
 
@@ -53,7 +59,7 @@ update: false/true
 data: "dynamic only"/"static only"/"both"
 ```
 
-### Response
+#### Response
 
 ```js
 {
@@ -62,18 +68,18 @@ data: "dynamic only"/"static only"/"both"
 }
 ```
 
-## /dbtrain/
+### /dbtrain/
 
 Updates from MÁV are not requestable. Can be filtered down to specific MySQL IDs.
 
-### Request
+#### Request
 
 ```js
 data: "dynamic only"/"static only"/"both"
 filter: [1, 2]
 ```
 
-### Response
+#### Response
 
 ```js
 {
@@ -85,18 +91,18 @@ filter: [1, 2]
 }
 ```
 
-## /train/[elvira-id]/
+### /train/[elvira-id]/
 
 Get train by MySQL ID. Preferred when ID is known.
 
-### Request
+#### Request
 
 ```js
 update: false/true
 data: "dynamic only"/"static only"/"both"
 ```
 
-### Response
+#### Response
 
 ```js
 {
@@ -105,18 +111,18 @@ data: "dynamic only"/"static only"/"both"
 }
 ```
 
-## /train/
+### /train/
 
 Updates from MÁV are not requestable. Can be filtered down to specific ElviraIDs.
 
-### Request
+#### Request
 
 ```js
 data: "dynamic only"/"static only"/"both"
 filter: ["544584-180616", "1231231-180616"]
 ```
 
-### Response
+#### Response
 
 ```js
 {
@@ -128,9 +134,11 @@ filter: ["544584-180616", "1231231-180616"]
 }
 ```
 
-## /close-stations/
+### /close-stations/
 
 Get the close stations in a given a radius to a latitude longitude
+
+#### Request
 
 ```js
 lat: 49.54
@@ -138,7 +146,7 @@ lon: 40.25
 radius: 0.5
 ```
 
-### Response
+#### Response
 
 ```js
 {
@@ -151,9 +159,11 @@ radius: 0.5
 }
 ```
 
-## /station-trains/
+### /station-trains/
 
 Get all trains (Elvira IDs) stopping between `time-from` and `time-to` at `station`.
+
+#### Request
 
 ```js
 time-from: 1529170525
@@ -161,7 +171,7 @@ time-to: 1529190525
 station: "Budapest-nyugati"
 ```
 
-### Response
+#### Response
 
 ```js
 {
@@ -173,9 +183,11 @@ station: "Budapest-nyugati"
 }
 ```
 
-## /route-trains/
+### /route-trains/
 
 Get all train journeys (Elvira IDs per A -> B route) stopping between `time-from` and `time-to` at `from-station` and going to `to-station`.
+
+#### Request
 
 ```js
 time-from: 1529170525
@@ -184,7 +196,7 @@ from-station: "Budapest-nyugati"
 to-station: "Cegléd"
 ```
 
-### Response
+#### Response
 
 ```js
 {

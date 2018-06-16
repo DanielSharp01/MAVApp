@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `stations` (
   `norm_name` varchar(255) NOT NULL,
   `lat` double NOT NULL,
   `lon` double NOT NULL,
+  `mav_found` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `norm_name` (`norm_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2050 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -46,7 +47,7 @@ CREATE TABLE IF NOT EXISTS `trains` (
   `enc_polyline` text,
   PRIMARY KEY (`id`),
   UNIQUE KEY `elvira_id` (`elvira_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4175 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4708 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Data exporting was unselected.
 -- Dumping structure for table mavapp.train_stations

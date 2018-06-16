@@ -211,7 +211,7 @@ namespace MAVAppBackend
             NumberType = numberType;
             Delay = delay;
             DelayReason = delayReason;
-            this.miscInfo.AddRange(miscInfo.Replace("\r", "").Split('\n'));
+            this.miscInfo.AddRange(miscInfo.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries));
 
             if (encPolyline == null) Polyline = null;
             else Polyline = new Polyline(Polyline.DecodePoints(encPolyline, 1E5f, Map.DefaultMap));

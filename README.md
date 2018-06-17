@@ -12,7 +12,23 @@ Is contained in the tables.sql file in the root of the repository.
 
 Requests can be obtained from (Body as json, Query, etc.).
 
-Response is json only.
+Response is json only in the following format:
+
+```js
+{
+    status: 200
+    result: { ... }
+}
+```
+
+or in the case of errors:
+
+```js
+{
+    status: 400
+    error: "Parameter 'data' must be either 'static only', 'dynamic only' or 'both'."
+}
+```
 
 ### Train object
 
@@ -23,14 +39,29 @@ Depending on how much data is requested of a train (dynamic only/static only/bot
 ```js
 {
     id: 415
-    elvira_id: "454845_180616"
+    elvira-id: "454845_180616"
     number: "441"
     name: "Sgsg. IC"
     type: "InterCity"
     number-type: null
     delay-reason: "Delayed because ..."
     misc-info: ["Misc #1", "Misc #2"]
-    enc_polyline: "long ass string"
+    enc-polyline: "long ass string"
+    stations: [
+        {
+            name: "Szolnok",
+            int-distance: 100,
+            distance: 99.99312361641964,
+            position-accuracy: "precise"/"integer-precision"/"missing",
+            arrival: "2018-06-17 08:15:00",
+            departure: "2018-06-17 08:16:00",
+            actual-arrival: "2018-06-17 08:44:00",
+            actual-departure: "2018-06-17 08:45:00",
+            arrived: true/false,
+            platform: null/"or some string"
+        },
+        ...
+    ]
 }
 ```
 
@@ -39,10 +70,10 @@ Depending on how much data is requested of a train (dynamic only/static only/bot
 ```js
 {
     id: 415
-    elvira_id: null
+    elvira-id: null
     delay: 4
-    gps_coord {lat: 47.09868, lon: 18.37985}
-    last_gps_coord: {lat: 47.15413667, lon: 18.40711667}
+    gpscoord {lat: 47.09868, lon: 18.37985}
+    last-gpscoord: {lat: 47.15413667, lon: 18.40711667}
 }
 ```
 
@@ -59,11 +90,10 @@ update: false/true
 data: "dynamic only"/"static only"/"both"
 ```
 
-#### Response
+#### Response result
 
 ```js
 {
-    status: 200
     train: { ... TRAIN ... }
 }
 ```
@@ -79,11 +109,10 @@ data: "dynamic only"/"static only"/"both"
 filter: [1, 2]
 ```
 
-#### Response
+#### Response result
 
 ```js
 {
-    status: 200
     trains: {
         1: { ...TRAIN... },
         2: null
@@ -102,11 +131,10 @@ update: false/true
 data: "dynamic only"/"static only"/"both"
 ```
 
-#### Response
+#### Response result
 
 ```js
 {
-    status: 200
     train: { ... TRAIN ... }
 }
 ```
@@ -122,11 +150,10 @@ data: "dynamic only"/"static only"/"both"
 filter: ["544584-180616", "1231231-180616"]
 ```
 
-#### Response
+#### Response result
 
 ```js
 {
-    status: 200
     trains: {
         "544584-180616": { ...TRAIN... },
         "1231231-180616": null
@@ -146,11 +173,10 @@ lon: 40.25
 radius: 0.5
 ```
 
-#### Response
+#### Response result
 
 ```js
 {
-    status: 200
     stations: { 
         name: "Budapest-nyugati"
         gps_coord: {lat: 49.53, lon: 40.24} 
@@ -171,11 +197,10 @@ time-to: 1529190525
 station: "Budapest-nyugati"
 ```
 
-#### Response
+#### Response result
 
 ```js
 {
-    status: 200
     trains: {
         1529170625: "541545-180616",
         1529180621: "145474-180616"
@@ -196,11 +221,10 @@ from-station: "Budapest-nyugati"
 to-station: "Cegléd"
 ```
 
-#### Response
+#### Response result
 
 ```js
 {
-    status: 200
     journeys: {
         [ {from: "Budapest-nyugati", to: "Monor", train: "541545-180616" }, {from: "Monor", to: "Cegléd", train: "458445-180616"} ],
         [ {from: "Budapest-nyugati", to: "Cegléd", train: "447484-180616" } ],

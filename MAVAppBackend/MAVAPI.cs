@@ -129,7 +129,7 @@ namespace MAVAppBackend
             catch (MAVAPIException e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(e.Message);
+                Console.WriteLine("MAVAPIException: " + e.Message);
                 Console.ResetColor();
                 return null;
             }

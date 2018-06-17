@@ -18,6 +18,7 @@ namespace MAVAppBackend
         public static void Main(string[] args)
         {
             Database.Initialize();
+            Database.UpdateDynamicData(MAVAPI.RequestTrains());
             BuildWebHost(args).Run();
             Database.Terminate();
         }

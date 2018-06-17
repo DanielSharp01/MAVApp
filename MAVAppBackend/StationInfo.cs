@@ -177,7 +177,7 @@ namespace MAVAppBackend
         {
             Name = name;
             IntDistance = intDistance;
-            Distance = intDistance;
+            Distance = -1;
             PositionAccuracy = StationPositionAccuracy.Missing;
             Arrival = arrival;
             Departure = departure;

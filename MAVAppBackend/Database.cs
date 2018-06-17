@@ -170,8 +170,20 @@ namespace MAVAppBackend
             if (train == null || !update) return train;
 
             JObject apiResponse = MAVAPI.RequestTrain(train.ElviraID);
-            train.UpdateTRAIN_API(apiResponse);
-            updateTrainToDB(train);
+            
+            if (apiResponse == null) return train;
+
+            try
+            {
+                train.UpdateTRAIN_API(apiResponse);
+                updateTrainToDB(train);
+            }
+            catch (MAVAPIException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("MAVAPIException: " + e.Message);
+                Console.ResetColor();
+            }
 
             return train;
         }
@@ -188,6 +200,7 @@ namespace MAVAppBackend
             if (!update) return train;
 
             JObject apiResponse = MAVAPI.RequestTrain(elviraID);
+
             if (train == null) // If the train does not exists in the DB let it be constructed from the API response
             {
                 if (apiResponse != null)
@@ -197,8 +210,19 @@ namespace MAVAppBackend
                 }
             }
 
-            train.UpdateTRAIN_API(apiResponse);
-            updateTrainToDB(train);
+            if (apiResponse == null) return train;
+
+            try
+            {
+                train.UpdateTRAIN_API(apiResponse);
+                updateTrainToDB(train);
+            }
+            catch (MAVAPIException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(e.ToString());
+                Console.ResetColor();
+            }
 
             return train;
         }

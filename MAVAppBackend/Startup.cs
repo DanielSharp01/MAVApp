@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json.Linq;
 
 namespace MAVAppBackend
 {
@@ -21,8 +22,6 @@ namespace MAVAppBackend
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
-            
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -30,10 +29,13 @@ namespace MAVAppBackend
 
             app.UseMvc();
 
-            app.Run((context) =>
+            app.UseStatusCodePages(async context =>
             {
-                context.Response.StatusCode = 404;
-                return Task.FromResult(0);
+                context.HttpContext.Response.ContentType = "application/json";
+
+                JObject response = new JObject();
+                response["status"] = context.HttpContext.Response.StatusCode;
+                await context.HttpContext.Response.WriteAsync(response.ToString(Newtonsoft.Json.Formatting.Indented));
             });
         }
     }

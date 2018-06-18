@@ -200,7 +200,7 @@ namespace MAVAppBackend
         /// <param name="gpsPosition">Current GPS Position of the train if known, null otherwise</param>
         /// <param name="lastGpsPosition">Last GPS Position (one TRAINS API request before) of the train if known, null otherwise</param>
         /// <param name="encPolyline">Polyline representing this Train journey</param>
-        /// <param name="stations">Stations this train hits</param>
+        /// <param name="stations">Stations this train hits, if null then we don't initialize this. See also: <seealso cref="LateConstructStations(List{StationInfo})"></param>
         public Train(int id, string elviraID, string number, string name, string type, string numberType, int delay, string delayReason, string miscInfo, Vector2 gpsPosition, Vector2 lastGpsPosition, string encPolyline, List<StationInfo> stations)
         {
             ID = id;
@@ -218,7 +218,7 @@ namespace MAVAppBackend
 
             GPSPosition = gpsPosition;
             LastGPSPosition = lastGpsPosition;
-            this.stations.AddRange(stations);
+            if (stations != null) this.stations.AddRange(stations);
         }
 
         /// <summary>
@@ -239,6 +239,16 @@ namespace MAVAppBackend
         {
             ElviraID = elviraID;
             UpdateTRAIN_API(apiResponse);
+        }
+
+        /// <summary>
+        /// Acts as if the parameter of the constructor was entered later, for avoiding nested MySQL readers.
+        /// </summary>
+        /// <param name="stations">Stations this train hits</param>
+        public void LateConstructStations(List<StationInfo> stations)
+        {
+            this.stations.Clear();
+            this.stations.AddRange(stations);
         }
 
         /// <summary>

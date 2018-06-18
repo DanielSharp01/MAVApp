@@ -9,83 +9,7 @@ using System.Threading.Tasks;
 
 namespace MAVAppBackend
 {
-    public static class MySQLExtensions
-    {
-        /// <summary>
-        /// Gets the value of a specified column as a string object, allowing null.
-        /// </summary>
-        /// <param name="columnName">The column name</param>
-        public static string GetStringOrNull(this MySqlDataReader reader, string columnName)
-        {
-            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? null : reader.GetString(columnName);
-        }
-
-        /// <summary>
-        /// Gets the value of a specified column as a string object. When null the default value is used instead.
-        /// </summary>
-        /// <param name="columnName">The column name</param>
-        /// <param name="default">Default string to return if column is null</param>
-        /// <returns>String at columnName if not null, default otherwise</returns>
-        public static string GetStringOrDefault(this MySqlDataReader reader, string columnName, string @default)
-        {
-            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? @default : reader.GetString(columnName);
-        }
-
-        /// <summary>
-        /// Gets the value of a specified column as an integer. When null the default value is used instead.
-        /// </summary>
-        /// <param name="columnName">The column name</param>
-        /// <param name="default">Default integer to return if column is null</param>
-        /// <returns>Integer at columnName if not null, default otherwise</returns>
-        public static int GetInt32OrDefault(this MySqlDataReader reader, string columnName, int @default)
-        {
-            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? @default : reader.GetInt32(columnName);
-        }
-
-        /// <summary>
-        /// Gets the value of 2 double columns converted into a Vector2 object.
-        /// </summary>
-        /// <param name="xCoordName">Column name of the .X coordinate</param>
-        /// <param name="yCoordName">Column name of the .Y coordinate</param>
-        /// <returns></returns>
-        public static Vector2 GetVector2OrNull(this MySqlDataReader reader, string xCoordName, string yCoordName)
-        {
-            if (reader.IsDBNull(reader.GetOrdinal(xCoordName)) || reader.IsDBNull(reader.GetOrdinal(yCoordName))) return null;
-            else return new Vector2(reader.GetDouble(xCoordName), reader.GetDouble(yCoordName));
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether the MySQLDataReader contains one or more rows. If it contains no rows it also closes the connection.
-        /// </summary>
-        /// <returns>True if the MySQLDataReader contains one or more rows, false otherwise</returns>
-        public static bool HasRowsOrClose(this MySqlDataReader reader)
-        {
-            if (reader.HasRows) return true;
-            reader.Close();
-            return false;
-        }
-
-        /// <summary>
-        /// Adds two double parameters with the value of a single Vector2.
-        /// </summary> 
-        /// <param name="xCoordName">Parameter name of the .X coordinate</param>
-        /// <param name="yCoordName">Parameter name of the .Y coordinate</param>
-        /// <param name="value">Value to add</param>
-        public static void AddVector2WithValue(this MySqlParameterCollection parameters, string xCoordName, string yCoordName, Vector2 value)
-        {
-            if (value == null)
-            {
-                parameters.AddWithValue(xCoordName, null);
-                parameters.AddWithValue(yCoordName, null);
-            }
-            else
-            {
-                parameters.AddWithValue(xCoordName, value.X);
-                parameters.AddWithValue(yCoordName, value.Y);
-            }
-            
-        }
-    }
+    
 
     public class Database
     {
@@ -201,21 +125,27 @@ namespace MAVAppBackend
 
             JObject apiResponse = MAVAPI.RequestTrain(elviraID);
 
-            if (train == null) // If the train does not exists in the DB let it be constructed from the API response
-            {
-                if (apiResponse != null)
-                {
-                    train = new Train(elviraID, apiResponse);
-                    insertTrainToDB(train);
-                }
-            }
-
-            if (apiResponse == null) return train;
-
+            bool updated = false;
             try
             {
-                train.UpdateTRAIN_API(apiResponse);
-                updateTrainToDB(train);
+                if (train == null) // If the train does not exists in the DB let it be constructed from the API response
+                {
+                    if (apiResponse != null)
+                    {
+                        // This weird logic is required to not insert a train if it cannot be found/parsed (which for our purposes is the same thing)
+                        train = new Train(elviraID, apiResponse);
+                        updated = true;
+                        insertTrainToDB(train);
+                    }
+                }
+
+                if (apiResponse == null) return train;
+
+                if (!updated)
+                {
+                    train.UpdateTRAIN_API(apiResponse);
+                    updateTrainToDB(train);
+                }
             }
             catch (MAVAPIException e)
             {
@@ -225,6 +155,147 @@ namespace MAVAppBackend
             }
 
             return train;
+        }
+
+        public static List<Train> GetTrains(bool? moving = null)
+        {
+            List<Train> trains = new List<Train>();
+            string whereCondition = "";
+            if (moving == true) whereCondition = " WHERE lat IS NOT NULL"; // lon would suffice to they are null at the same time (unless ofc. someone tinkers with the database)
+            else if (moving == false) whereCondition = " WHERE lat IS NULL";
+
+            MySqlCommand cmd = new MySqlCommand("SELECT * FROM trains" + whereCondition, connection);
+            MySqlDataReader reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                //TRAIN data
+                int id = reader.GetInt32("id");
+                string elviraID = reader.GetStringOrNull("elvira_id");
+                string number = reader.GetStringOrNull("number");
+                string name = reader.GetStringOrNull("name");
+                string type = reader.GetStringOrNull("type");
+                string numberType = reader.GetStringOrNull("number_type");
+                string delayReason = reader.GetStringOrNull("delay_reason");
+                string miscInfo = reader.GetStringOrDefault("misc_info", "");
+                string encPolyline = reader.GetStringOrNull("enc_polyline");
+
+                // TRAINS data
+                int delay = reader.GetInt32OrDefault("delay", 0);
+                Vector2 gpsPosition = reader.GetVector2OrNull("lat", "lon");
+                Vector2 lastGpsPosition = reader.GetVector2OrNull("last_lat", "last_lon");
+                
+                trains.Add(new Train(id, elviraID, number, name, type, numberType, delay, delayReason, miscInfo, gpsPosition, lastGpsPosition, encPolyline, null));
+            }
+
+            reader.Close();
+
+            foreach (Train train in trains)
+            {
+                // TRAIN data - station infos
+                List<StationInfo> stations = new List<StationInfo>();
+                if (train.Polyline != null) // Aka. no train data, as polyline is always supplied
+                {
+                    cmd = new MySqlCommand("SELECT * FROM train_stations LEFT JOIN stations ON station = stations.id WHERE train_id = @id ORDER BY number ASC", connection);
+                    cmd.Parameters.AddWithValue("@id", train.ID);
+                    cmd.Prepare();
+                    reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        stations.Add(new StationInfo(reader.IsDBNull(reader.GetOrdinal("station")) ? null : new Station(reader.GetInt32("id"), reader.GetString("name"), new Vector2(reader.GetDouble("lat"), reader.GetDouble("lon"))),
+                            reader.GetString("mav_name"), reader.GetInt32("int_distance"), reader.GetDouble("distance"), reader.GetInt32("position_accuracy"), reader.GetDateTime("arrive"), reader.GetDateTime("depart"),
+                            reader.GetDateTime("arrive_actual"), reader.GetDateTime("depart_actual"), reader.GetBoolean("arrived"),
+                            reader.IsDBNull(reader.GetOrdinal("platform")) ? null : reader.GetString("platform")));
+                    }
+                    reader.Close();
+                }
+
+                train.LateConstructStations(stations);
+            }
+
+            return trains;
+        }
+
+        public static List<Train> GetTrainsFilter(int[] ids, string[] elvira_ids)
+        {
+            List<Train> trains = new List<Train>();
+            if (ids.Length == 0 && elvira_ids.Length == 0) return trains;
+
+            string whereCondition = " WHERE ";
+
+            if (ids.Length > 0)
+            {
+                whereCondition += "id in (";
+                for (int i = 0; i < ids.Length; i++)
+                {
+                    whereCondition += $"@id_array_{i}";
+                    if (i < ids.Length - 1) whereCondition += ", ";
+                }
+                whereCondition += ")";
+            }
+            
+            if (elvira_ids.Length > 0)
+            {
+                whereCondition += $"{(whereCondition.Last() == ')' ? " OR" : "")} elvira_id in (";
+                for (int i = 0; i < elvira_ids.Length; i++)
+                {
+                    whereCondition += $"@elvira_id_array_{i}";
+                    if (i < elvira_ids.Length - 1) whereCondition += ", ";
+                }
+                whereCondition += ")";
+            }
+
+            MySqlCommand cmd = new MySqlCommand("SELECT * FROM trains" + whereCondition, connection);
+            cmd.Parameters.AddArrayWithValue("id_array", ids);
+            cmd.Parameters.AddArrayWithValue("elvira_id_array", elvira_ids);
+            cmd.Prepare();
+            MySqlDataReader reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                //TRAIN data
+                int id = reader.GetInt32("id");
+                string elviraID = reader.GetStringOrNull("elvira_id");
+                string number = reader.GetStringOrNull("number");
+                string name = reader.GetStringOrNull("name");
+                string type = reader.GetStringOrNull("type");
+                string numberType = reader.GetStringOrNull("number_type");
+                string delayReason = reader.GetStringOrNull("delay_reason");
+                string miscInfo = reader.GetStringOrDefault("misc_info", "");
+                string encPolyline = reader.GetStringOrNull("enc_polyline");
+
+                // TRAINS data
+                int delay = reader.GetInt32OrDefault("delay", 0);
+                Vector2 gpsPosition = reader.GetVector2OrNull("lat", "lon");
+                Vector2 lastGpsPosition = reader.GetVector2OrNull("last_lat", "last_lon");
+
+                trains.Add(new Train(id, elviraID, number, name, type, numberType, delay, delayReason, miscInfo, gpsPosition, lastGpsPosition, encPolyline, null));
+            }
+
+            reader.Close();
+
+            foreach (Train train in trains)
+            {
+                // TRAIN data - station infos
+                List<StationInfo> stations = new List<StationInfo>();
+                if (train.Polyline != null) // Aka. no train data, as polyline is always supplied
+                {
+                    cmd = new MySqlCommand("SELECT * FROM train_stations LEFT JOIN stations ON station = stations.id WHERE train_id = @id ORDER BY number ASC", connection);
+                    cmd.Parameters.AddWithValue("@id", train.ID);
+                    cmd.Prepare();
+                    reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        stations.Add(new StationInfo(reader.IsDBNull(reader.GetOrdinal("station")) ? null : new Station(reader.GetInt32("id"), reader.GetString("name"), new Vector2(reader.GetDouble("lat"), reader.GetDouble("lon"))),
+                            reader.GetString("mav_name"), reader.GetInt32("int_distance"), reader.GetDouble("distance"), reader.GetInt32("position_accuracy"), reader.GetDateTime("arrive"), reader.GetDateTime("depart"),
+                            reader.GetDateTime("arrive_actual"), reader.GetDateTime("depart_actual"), reader.GetBoolean("arrived"),
+                            reader.IsDBNull(reader.GetOrdinal("platform")) ? null : reader.GetString("platform")));
+                    }
+                    reader.Close();
+                }
+
+                train.LateConstructStations(stations);
+            }
+
+            return trains;
         }
 
         /// <summary>

@@ -36,6 +36,8 @@ Depending on how much data is requested of a train (dynamic only/static only/bot
 
 #### Static only
 
+Stations appearing in the correct order.
+
 ```js
 {
     id: 415
@@ -67,6 +69,8 @@ Depending on how much data is requested of a train (dynamic only/static only/bot
 
 #### Dynamic only
 
+Where `gpscoord` being null means the train is not going, and if `last-gpscoord` is null aswell, then we never "saw" it going.
+
 ```js
 {
     id: 415
@@ -79,11 +83,11 @@ Depending on how much data is requested of a train (dynamic only/static only/bot
 
 Both is obviously the combination of the two.
 
-### /dbtrain/[id : int]/
+### /train/[id]/
 
 #### Request
 
-Get train by MySQL ID. Preferred when ID is known.
+Gets a train by MySQL ID if `id` is integer or else by ElviraID
 
 ```js
 update: false/true
@@ -93,77 +97,91 @@ data: "dynamic only"/"static only"/"both"
 #### Response result
 
 ```js
-{
-    train: { ... TRAIN ... }
-}
+{ ... TRAIN ... }
 ```
 
-### /dbtrain/
+### /trains/
 
-Updates from MÁV are not requestable. Can be filtered down to specific MySQL IDs.
+Gets all trains from the Database without updating any of them. The results can be filtered like such:
 
-#### Request
-
-```js
-data: "dynamic only"/"static only"/"both"
-filter: [1, 2]
-```
-
-#### Response result
+#### Request all trains
 
 ```js
-{
-    trains: {
-        1: { ...TRAIN... },
-        2: null
-    }
-}
-```
-
-### /train/[elvira-id]/
-
-Get train by MySQL ID. Preferred when ID is known.
-
-#### Request
-
-```js
-update: false/true
 data: "dynamic only"/"static only"/"both"
 ```
 
 #### Response result
 
+An endless stream of objects in particular order
+
 ```js
-{
-    train: { ... TRAIN ... }
-}
+[
+    { ...TRAIN... },
+]
 ```
 
-### /train/
+#### Request all trains with MySQL or Elvira IDs
 
-Updates from MÁV are not requestable. Can be filtered down to specific ElviraIDs.
-
-#### Request
+Integer means MySQL ID else means ElviraID. You can mix and match them, but if you request the same train twice it's gonna appear twice.
 
 ```js
 data: "dynamic only"/"static only"/"both"
-filter: ["544584-180616", "1231231-180616"]
+ids: []
 ```
 
 #### Response result
 
+The response is an associative array with MySQL or ElviraID keys.
+
 ```js
 {
-    trains: {
-        "544584-180616": { ...TRAIN... },
-        "1231231-180616": null
-    }
+    "1545": { ...TRAIN... },
+    ...
 }
+```
+
+#### Request all trains moving (or not)
+
+In other words their GPSCoordinate not being null (or being null).
+
+```js
+data: "dynamic only"/"static only"/"both"
+moving: true/false
+```
+
+#### Response result
+
+An endless stream of objects in no particular order.
+
+```js
+[
+    { ...TRAIN... },
+]
+```
+
+#### Request all trains in a given distance from location (latitude, longitude)
+
+```js
+data: "dynamic only"/"static only"/"both"
+lat: 49.54
+lon: 40.25
+radius: 0.5
+```
+
+#### Response result
+
+The response is an ordered array by distance. The distance property will get appended to the train object.
+
+```js
+[
+    { ...TRAIN..., distance: 0.12 },
+    ...
+]
 ```
 
 ### /close-stations/
 
-Get the close stations in a given a radius to a latitude longitude
+Get the close stations in a given a distance to a location (latitude, longitude).
 
 #### Request
 
@@ -175,14 +193,17 @@ radius: 0.5
 
 #### Response result
 
+The response is an ordered array of stations by distance.
+
 ```js
-{
-    stations: { 
+[
+    { 
         name: "Budapest-nyugati"
-        gps_coord: {lat: 49.53, lon: 40.24} 
+        gpscoord: {lat: 49.53, lon: 40.24} 
         distance: 0.12,
-    }
-}
+    },
+    ...
+]
 ```
 
 ### /station-trains/
@@ -191,20 +212,22 @@ Get all trains (Elvira IDs) stopping between `time-from` and `time-to` at `stati
 
 #### Request
 
+The API does not support times more than one day apart.
+
 ```js
-time-from: 1529170525
-time-to: 1529190525
+from-time: 2018-06-17 17:00:00
+to-time: 2018-06-17 19:00:00
 station: "Budapest-nyugati"
 ```
 
 #### Response result
 
+The response is an associative array with DateTime of arrival as index.
+
 ```js
 {
-    trains: {
-        1529170625: "541545-180616",
-        1529180621: "145474-180616"
-    }
+    "2018-06-17 17:56:00": "541545-180616",
+    "2018-06-17 18:56:00": "145474-180616"
 }
 ```
 
@@ -214,21 +237,23 @@ Get all train journeys (Elvira IDs per A -> B route) stopping between `time-from
 
 #### Request
 
+The API does not support times more than one day apart.
+
 ```js
-time-from: 1529170525
-time-to: 1529171525
+from-time: 2018-06-17 17:00:00
+to-time: 2018-06-17 19:00:00
 from-station: "Budapest-nyugati"
 to-station: "Cegléd"
 ```
 
 #### Response result
 
+The response is an array of train journeys in no particular. A train journey is represented as an ordered array of the trains to take to complete it.
+
 ```js
-{
-    journeys: {
-        [ {from: "Budapest-nyugati", to: "Monor", train: "541545-180616" }, {from: "Monor", to: "Cegléd", train: "458445-180616"} ],
-        [ {from: "Budapest-nyugati", to: "Cegléd", train: "447484-180616" } ],
-        ...
-    }
-}
+[
+    [ {from: "Budapest-nyugati", to: "Monor", train: "541545-180616" }, {from: "Monor", to: "Cegléd", train: "458445-180616"} ],
+    [ {from: "Budapest-nyugati", to: "Cegléd", train: "447484-180616" } ],
+    ...
+]
 ```

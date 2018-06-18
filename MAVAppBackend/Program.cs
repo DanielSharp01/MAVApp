@@ -17,6 +17,7 @@ namespace MAVAppBackend
     {
         public static void Main(string[] args)
         {
+            //MAVAPI.RequestStation("Budapest-Nyugati", DateTime.Now);
             Database.Initialize();
             Database.UpdateDynamicData(MAVAPI.RequestTrains());
             BuildWebHost(args).Run();

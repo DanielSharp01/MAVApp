@@ -119,12 +119,64 @@ namespace MAVAppBackend
         {
             try
             {
-                JObject trainRequest = new JObject();
-                trainRequest["a"] = "TRAIN";
-                trainRequest["jo"] = new JObject();
-                trainRequest["jo"]["v"] = elviraID;
-                JObject trainResponse = RequestMAV(trainRequest);
-                return trainResponse;
+                JObject request = new JObject();
+                request["a"] = "TRAIN";
+                request["jo"] = new JObject();
+                request["jo"]["v"] = elviraID;
+                JObject response = RequestMAV(request);
+                return response;
+            }
+            catch (MAVAPIException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("MAVAPIException: " + e.Message);
+                Console.ResetColor();
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Request STATION API for trains starting from this station at a specific date from MÁV
+        /// </summary>
+        /// <returns></returns>
+        public static JObject RequestStation(string stationName, DateTime date)
+        {
+            try
+            {
+                JObject request = new JObject();
+                request["a"] = "STATION";
+                request["jo"] = new JObject();
+                request["jo"]["a"] = stationName;
+                request["jo"]["d"] = date.ToString("yyyy.MM.dd");
+                JObject response = RequestMAV(request);
+                return response;
+            }
+            catch (MAVAPIException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("MAVAPIException: " + e.Message);
+                Console.ResetColor();
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Request ROUTE API for trains going from A to B touching C at a specific date from MÁV
+        /// </summary>
+        /// <returns></returns>
+        public static JObject RequestRoute(string from, string to, string touching, DateTime date)
+        {
+            try
+            {
+                JObject request = new JObject();
+                request["a"] = "ROUTE";
+                request["jo"] = new JObject();
+                request["jo"]["i"] = from;
+                request["jo"]["e"] = to;
+                if (touching != null) request["jo"]["v"] = touching;
+                request["jo"]["d"] = date.ToString("yyyy.MM.dd");
+                JObject response = RequestMAV(request);
+                return response;
             }
             catch (MAVAPIException e)
             {
@@ -142,18 +194,27 @@ namespace MAVAppBackend
         public static List<TRAINSData> RequestTrains()
         {
             List<TRAINSData> ret = new List<TRAINSData>();
-            JObject trainsRequest = new JObject();
-            trainsRequest["a"] = "TRAINS";
-            trainsRequest["jo"] = new JObject();
-            trainsRequest["jo"]["history"] = false;
-            trainsRequest["jo"]["id"] = false;
-            JObject trainsResponse = RequestMAV(trainsRequest);
-            if (trainsResponse != null)
+            try
             {
-                foreach (JObject train in trainsResponse["d"]["result"]["Trains"]["Train"])
+                JObject request = new JObject();
+                request["a"] = "TRAINS";
+                request["jo"] = new JObject();
+                request["jo"]["history"] = false;
+                request["jo"]["id"] = false;
+                JObject response = RequestMAV(request);
+                if (response != null)
                 {
-                    ret.Add(new TRAINSData(train["@ElviraID"].ToString(), new Vector2(train["@Lat"].ToString(), train["@Lon"].ToString()), int.Parse(train["@Delay"].ToString())));
+                    foreach (JObject train in response["d"]["result"]["Trains"]["Train"])
+                    {
+                        ret.Add(new TRAINSData(train["@ElviraID"].ToString(), new Vector2(train["@Lat"].ToString(), train["@Lon"].ToString()), int.Parse(train["@Delay"].ToString())));
+                    }
                 }
+            }
+            catch (MAVAPIException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("MAVAPIException: " + e.Message);
+                Console.ResetColor();
             }
 
             return ret;

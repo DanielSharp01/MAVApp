@@ -15,6 +15,19 @@ namespace MAVAppBackend
     }
     public class APIController : ControllerBase
     {
+        public bool TryParseTrainDataFilter(string data, out TrainDataFilter dataFilter)
+        {
+            dataFilter = TrainDataFilter.Both;
+            switch (data)
+            {
+                case "static only": dataFilter = TrainDataFilter.StaticOnly; break;
+                case "dynamic only": dataFilter = TrainDataFilter.DynamicOnly; break;
+                case "both": dataFilter = TrainDataFilter.Both; break;
+                default: return false;
+            }
+
+            return true;
+        }
         public JObject Train(Train train, TrainDataFilter dataFilter)
         {
             JObject obj = new JObject();
@@ -71,20 +84,24 @@ namespace MAVAppBackend
             return obj;
         }
 
-        public IActionResult Success(JObject obj)
+        public IActionResult Success(JToken obj)
         {
-            JObject response = new JObject();
-            response["status"] = 200;
-            response["result"] = obj;
-            return Ok(response.ToString(Newtonsoft.Json.Formatting.Indented));
+            return StatusCodeWithJObject(200, obj, "result");
         }
 
-        public IActionResult BadRequestError(string error)
+        public IActionResult BadRequestError(JToken obj)
         {
-            JObject response = new JObject();
-            response["status"] = 400;
-            response["error"] = error;
-            return BadRequest(response.ToString(Newtonsoft.Json.Formatting.Indented));
+            return StatusCodeWithJObject(400, obj, "error");
+        }
+
+        public IActionResult StatusCodeWithJObject(int statusCode, JToken obj, string resultFieldName = "result")
+        {
+            JObject response = new JObject
+            {
+                ["status"] = statusCode,
+                [resultFieldName] = obj
+            };
+            return StatusCode(500, response.ToString(Newtonsoft.Json.Formatting.Indented));
         }
     }
 }

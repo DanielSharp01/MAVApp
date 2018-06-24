@@ -668,32 +668,5 @@ namespace MAVAppBackend
         {
             ID = id;
         }
-
-        /// <summary>
-        /// Prints this train's line an stations into an SVG stream for debug purposes
-        /// </summary>
-        /// <param name="svg">SVG stream to print into</param>
-        public void PrintIntoSVG(SVGStream svg)
-        {
-            if (HasTRAINData)
-            {
-                svg.DrawPolyline(Polyline, "black", 1);
-                foreach (StationInfo station in stations)
-                {
-                    if (station.PositionAccuracy != StationPositionAccuracy.Missing)
-                        svg.DrawCircle(Polyline.GetPoint(station.Distance, Map.DefaultMap), 3, strokeColor: (station.PositionAccuracy == StationPositionAccuracy.Precise ? "green" : "red"), strokeWidth: 1);
-                    else
-                    {
-                        Console.WriteLine(station.Name + " is missing positional data!");
-                    }
-                }
-            }
-            else
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"No TRAIN data to print for train '{ElviraID}'.");
-                Console.ResetColor();
-            }
-        }
     }
 }

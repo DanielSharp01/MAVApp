@@ -12,6 +12,11 @@ namespace MAVAppBackend
     public class Vector2
     {
         /// <summary>
+        /// Vector with both coordinates being 0
+        /// </summary>
+        public static readonly Vector2 Zero = new Vector2(0, 0);
+
+        /// <summary>
         /// X-coordinate
         /// </summary>
         public double X;

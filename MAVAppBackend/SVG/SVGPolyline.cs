@@ -8,7 +8,7 @@ namespace MAVAppBackend.SVG
 {
     public class SVGPolyline : SVGObject
     {
-        public List<Vector2> Points;
+        public List<Vector2> Points = new List<Vector2>();
 
         /// <summary>
         /// Whether the polyline is closed (repeats it's first point at the end)
@@ -19,7 +19,7 @@ namespace MAVAppBackend.SVG
         /// <param name="closed">Whether the polyline is closed (repeats it's first point at the end)</param>
         public SVGPolyline(List<Vector2> points, bool closed = false)
         {
-            Points = points;
+            Points.AddRange(points);
             Closed = closed;
         }
 

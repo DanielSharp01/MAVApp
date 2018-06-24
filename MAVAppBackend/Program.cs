@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
 using Newtonsoft.Json.Linq;
+using MAVAppBackend.DataAccess;
 
 namespace MAVAppBackend
 {
@@ -18,10 +19,13 @@ namespace MAVAppBackend
         public static void Main(string[] args)
         {
             //MAVAPI.RequestStation("Budapest-Nyugati", DateTime.Now);
-            Database.Initialize();
-            Database.UpdateDynamicData(MAVAPI.RequestTrains());
-            BuildWebHost(args).Run();
-            Database.Terminate();
+            using (Database db = Database.Instance)
+            {
+                // DatabaseLegacy.Initialize();
+                // DatabaseLegacy.UpdateDynamicData(MAVAPI.RequestTrains());
+                BuildWebHost(args).Run();
+                // DatabaseLegacy.Terminate();
+            }
         }
 
         public static IWebHost BuildWebHost(string[] args) =>

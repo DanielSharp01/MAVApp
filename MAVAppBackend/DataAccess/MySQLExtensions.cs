@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace MAVAppBackend
+namespace MAVAppBackend.DataAccess
 {
     public static class MySQLExtensions
     {

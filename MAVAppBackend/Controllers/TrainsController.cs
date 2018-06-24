@@ -8,7 +8,7 @@ using Newtonsoft.Json.Linq;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
-namespace MAVAppBackend
+namespace MAVAppBackend.Controller
 {
     [Route("trains")]
     public class TrainsController : APIController
@@ -54,7 +54,7 @@ namespace MAVAppBackend
                     else
                         stringIDs.Add(id);
                 }
-                List<Train> allTrains = Database.GetTrainsFilter(mysqlIDs.ToArray(), stringIDs.ToArray());
+                List<Train> allTrains = DatabaseLegacy.GetTrainsFilter(mysqlIDs.ToArray(), stringIDs.ToArray());
 
                 JObject response = new JObject();
                 foreach (string id in ids)
@@ -67,7 +67,7 @@ namespace MAVAppBackend
             }
             else if (!double.IsNaN(lat) || !double.IsNaN(lon) || !double.IsNaN(radius))
             {
-                List<Train> trains = Database.GetTrains(moving);
+                List<Train> trains = DatabaseLegacy.GetTrains(moving);
                 List<(double distance, Train train)> orderedTrains = new List<(double distance, Train train)>();
                 double kmpp = WebMercator.DefaultMap.MeterPerUnit() / 1000;
 
@@ -98,7 +98,7 @@ namespace MAVAppBackend
             }
             else
             {
-                List<Train> trains = Database.GetTrains(moving);
+                List<Train> trains = DatabaseLegacy.GetTrains(moving);
                 JArray response = new JArray();
                 foreach (Train train in trains)
                 {

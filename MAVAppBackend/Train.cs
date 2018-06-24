@@ -214,7 +214,7 @@ namespace MAVAppBackend
             this.miscInfo.AddRange(miscInfo.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries));
 
             if (encPolyline == null) Polyline = null;
-            else Polyline = new Polyline(Polyline.DecodePoints(encPolyline, 1E5f, WebMercator.DefaultMap));
+            else Polyline = new Polyline(Polyline.DecodePoints(encPolyline, 1E5, WebMercator.DefaultMap));
 
             GPSPosition = gpsPosition;
             LastGPSPosition = lastGpsPosition;
@@ -577,7 +577,7 @@ namespace MAVAppBackend
                     {
                         if (stations[i].IntDistance != -1)
                         {
-                            Station st = Database.GetStation(stations[i].Name);
+                            Station st = DatabaseLegacy.GetStation(stations[i].Name);
                             if (st != null) stations[i].UpdateStation(st);
 
                             double dist = 0;
@@ -617,7 +617,7 @@ namespace MAVAppBackend
             {
                 if (station.IntDistance != -1)
                 {
-                    Station st = Database.GetStation(station.Name);
+                    Station st = DatabaseLegacy.GetStation(station.Name);
                     double dist;
                     if (st != null && !double.IsNaN(dist = Polyline.GetProjectedDistance(WebMercator.DefaultMap.FromLatLon(st.GPSCoord), WebMercator.DefaultMap, 0.05)))
                     {

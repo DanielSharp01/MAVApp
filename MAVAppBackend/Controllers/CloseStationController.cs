@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace MAVAppBackend
+namespace MAVAppBackend.Controller
 {
     [Route("close-stations")]
     public class CloseStationController : APIController
@@ -19,7 +19,7 @@ namespace MAVAppBackend
             double kmpp = WebMercator.DefaultMap.MeterPerUnit() / 1000;
 
             List<(double distance, Station station)> stations = new List<(double distance, Station station)>();
-            foreach (Station station in Database.GetAllStations())
+            foreach (Station station in DatabaseLegacy.GetAllStations())
             {
                 double dist = (WebMercator.DefaultMap.FromLatLon(station.GPSCoord) - WebMercator.DefaultMap.FromLatLon(new Vector2(lat, lon))).Length * kmpp;
                 if (dist <= radius)

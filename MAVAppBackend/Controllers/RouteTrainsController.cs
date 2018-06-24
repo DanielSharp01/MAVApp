@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace MAVAppBackend
+namespace MAVAppBackend.Controller
 {
     [Route("route-trains")]
     public class RouteTrainsController : APIController

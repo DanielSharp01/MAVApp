@@ -7,14 +7,13 @@ namespace MAVAppBackend
 {
     public class Line
     {
-        /// <summary>
-        /// ID used in the MySQL database
-        /// </summary>
-        public int Id { private set; get; }
+        public int ID { private set; get; }
+        public Polyline Polyline { private set; get; }
 
-        /// <summary>
-        /// Points in this line as (lat, lon) Vector
-        /// </summary>
-        List<Vector2> Points { get; set; }
+        public Line(int id, Polyline polyline)
+        {
+            ID = id;
+            Polyline = polyline;
+        }
     }
 }

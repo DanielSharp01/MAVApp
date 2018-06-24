@@ -48,11 +48,11 @@ namespace MAVAppBackend
         /// <param name="km">Distance from the start in kilometers</param>
         /// <param name="map">The map projection to take into account</param>
         /// <returns>Point at a specific distance away from start</returns>
-        public Vector2 GetPoint(double km, Map map)
+        public Vector2 GetPoint(double km, WebMercator map)
         {
             if (km < 0) return points.First();
 
-            double kmpp = map.MeterPerWebMercUnit() / 1000;
+            double kmpp = map.MeterPerUnit() / 1000;
 
             for (int i = 0; i < points.Count - 1; i++)
             {
@@ -77,9 +77,9 @@ namespace MAVAppBackend
         /// <param name="map">The map projection to take into account</param>
         /// <param name="distanceLimit">The distance limit with which a point is still considered projectable</param>
         /// <returns>Distance from the start if projectable, NAN otherwise</returns>
-        public double GetProjectedDistance(Vector2 point, Map map, double distanceLimit)
+        public double GetProjectedDistance(Vector2 point, WebMercator map, double distanceLimit)
         {
-            double kmpp = map.MeterPerWebMercUnit() / 1000;
+            double kmpp = map.MeterPerUnit() / 1000;
 
             int bestIndex = -1;
             double bestProj = 0;
@@ -127,7 +127,7 @@ namespace MAVAppBackend
         /// <param name="precisionFactor">Precision factor of the encoded polyline. Same as the one you encoded with if you encoded yourself.</param>
         /// <param name="map">Map projection to convert into (if null than points are returned as Latitude (X), Longitude (Y) coordinates)</param>
         /// <returns>Points of the polyline in the projection specified by the map parameter</returns>
-        public static List<Vector2> DecodePoints(string polyline, double precisionFactor, Map map)
+        public static List<Vector2> DecodePoints(string polyline, double precisionFactor, WebMercator map)
         {
             List<Vector2> points = new List<Vector2>();
             int latitude = 0;
@@ -171,7 +171,7 @@ namespace MAVAppBackend
         /// <param name="precisionFactor">Precision factor to encode with.</param>
         /// <param name="map">Map projection of the points (if null than points are treated as Latitude (X), Longitude (Y) coordinates)</param>
         /// <returns>Encoded polyline</returns>
-        public static string EncodePoints(List<Vector2> points, double precisionFactor, Map map)
+        public static string EncodePoints(List<Vector2> points, double precisionFactor, WebMercator map)
         {
             List<Vector2> encodablePoints = new List<Vector2>();
 

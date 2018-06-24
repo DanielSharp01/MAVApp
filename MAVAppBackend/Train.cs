@@ -214,7 +214,7 @@ namespace MAVAppBackend
             this.miscInfo.AddRange(miscInfo.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries));
 
             if (encPolyline == null) Polyline = null;
-            else Polyline = new Polyline(Polyline.DecodePoints(encPolyline, 1E5f, Map.DefaultMap));
+            else Polyline = new Polyline(Polyline.DecodePoints(encPolyline, 1E5f, WebMercator.DefaultMap));
 
             GPSPosition = gpsPosition;
             LastGPSPosition = lastGpsPosition;
@@ -363,7 +363,7 @@ namespace MAVAppBackend
 
             bool hasTrainData = HasTRAINData; // Polyline will be defined in a second so that would skew our method
             // Polyline of the train path
-            List<Vector2> points = Polyline.DecodePoints(apiResponse["d"]["result"]["line"][0]["points"].ToString(), 1E5f, Map.DefaultMap);
+            List<Vector2> points = Polyline.DecodePoints(apiResponse["d"]["result"]["line"][0]["points"].ToString(), 1E5f, WebMercator.DefaultMap);
             Polyline = new Polyline(points);
 
             // Station infos
@@ -581,7 +581,7 @@ namespace MAVAppBackend
                             if (st != null) stations[i].UpdateStation(st);
 
                             double dist = 0;
-                            if (st != null && !double.IsNaN(dist = Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(st.GPSCoord), Map.DefaultMap, 0.25)))
+                            if (st != null && !double.IsNaN(dist = Polyline.GetProjectedDistance(WebMercator.DefaultMap.FromLatLon(st.GPSCoord), WebMercator.DefaultMap, 0.25)))
                             {
                                 stations[i].UpdateDistanceInformation(dist, StationPositionAccuracy.Precise);
                                 if (firstFound == -1) firstFound = i;
@@ -596,7 +596,7 @@ namespace MAVAppBackend
                     for (int i = firstFound - 1; i >= 0; i--) // We do a reverse check as well so that we can figure out missing stations backwards from the first found
                     {
                         if (stations[i].IntDistance != -1
-                            && (stations[i].Station != null && !double.IsNaN(Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(stations[i].Station.GPSCoord), Map.DefaultMap, 0.05)))
+                            && (stations[i].Station != null && !double.IsNaN(Polyline.GetProjectedDistance(WebMercator.DefaultMap.FromLatLon(stations[i].Station.GPSCoord), WebMercator.DefaultMap, 0.05)))
                             && stations[i].PositionAccuracy == StationPositionAccuracy.Missing)
                         {
                             stations[i].UpdateDistanceInformation(stations[i + 1].Distance - (stations[i + 1].IntDistance - stations[i].IntDistance), StationPositionAccuracy.IntegerPrecision);
@@ -619,7 +619,7 @@ namespace MAVAppBackend
                 {
                     Station st = Database.GetStation(station.Name);
                     double dist;
-                    if (st != null && !double.IsNaN(dist = Polyline.GetProjectedDistance(Map.DefaultMap.FromLatLon(st.GPSCoord), Map.DefaultMap, 0.05)))
+                    if (st != null && !double.IsNaN(dist = Polyline.GetProjectedDistance(WebMercator.DefaultMap.FromLatLon(st.GPSCoord), WebMercator.DefaultMap, 0.05)))
                     {
                         if (double.IsNaN(firstDist))
                         {

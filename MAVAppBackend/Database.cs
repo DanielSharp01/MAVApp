@@ -521,7 +521,7 @@ namespace MAVAppBackend
                 cmd.Parameters.AddWithValue("@number_type", train.NumberType);
                 cmd.Parameters.AddWithValue("@delay_reason", train.DelayReason);
                 cmd.Parameters.AddWithValue("@misc_info", String.Join("\n", train.MiscInfo));
-                cmd.Parameters.AddWithValue("@enc_polyline", Polyline.EncodePoints(train.Polyline.Points.ToList(), 1E5f, Map.DefaultMap));
+                cmd.Parameters.AddWithValue("@enc_polyline", Polyline.EncodePoints(train.Polyline.Points.ToList(), 1E5f, WebMercator.DefaultMap));
                 cmd.Prepare();
                 cmd.ExecuteNonQuery();
 

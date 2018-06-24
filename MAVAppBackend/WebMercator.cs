@@ -8,9 +8,9 @@ namespace MAVAppBackend
 {
     /// <summary>
     /// Contains functions regarding the Web Mercator projection. The object instance represents a specific WebMercator projection.
-    /// Terminology: When talking about an unscaled WebMercator I mean the projection given by new Map(new Vector2(0, 0), 1, 1), no offset, no zoom and no tile scaling.
+    /// Terminology: When talking about an unscaled WebMercator I mean the projection given by new WebMercator(new Vector2(0, 0), 0, 1), no offset, no zoom and no tile scaling.
     /// </summary>
-    public class Map
+    public class WebMercator
     {
         /// <summary>
         /// Tile size of Google Maps
@@ -28,12 +28,12 @@ namespace MAVAppBackend
         /// <summary>
         /// The unscaled map
         /// </summary>
-        public static readonly Map UnscaledMap = new Map(new Vector2(0, 0), 1, 1);
+        public static readonly WebMercator UnscaledMap = new WebMercator(new Vector2(0, 0), 0, 1);
 
         /// <summary>
         /// Default Map used throughout the application
         /// </summary>
-        public static readonly Map DefaultMap = new Map();
+        public static readonly WebMercator DefaultMap = new WebMercator();
 
         /// <summary>
         /// Tile size of this map
@@ -62,9 +62,9 @@ namespace MAVAppBackend
             get;
         }
 
-        public Map()
+        public WebMercator()
         {
-            Center = LatLonToWebMerc(DefaultCenter);
+            Center = LatLonToUnscaled(DefaultCenter);
             Zoom = DefaultZoom;
             TileSize = DEFAULT_TILE_SIZE;
         }
@@ -72,9 +72,9 @@ namespace MAVAppBackend
         /// <param name="center">Center of the map in latitude, longitude</param>
         /// <param name="zoom"></param>
         /// <param name="tileSize"></param>
-        public Map(Vector2 center, double zoom = DefaultZoom, int tileSize = DEFAULT_TILE_SIZE)
+        public WebMercator(Vector2 center, double zoom = DefaultZoom, int tileSize = DEFAULT_TILE_SIZE)
         {
-            Center = LatLonToWebMerc(center);
+            Center = LatLonToUnscaled(center);
             Zoom = zoom;
             TileSize = tileSize;
         }
@@ -86,20 +86,20 @@ namespace MAVAppBackend
         /// <returns>WebMercator X, Y vector</returns>
         public Vector2 FromLatLon(Vector2 p)
         {
-            return ProjectUnscaled(LatLonToWebMerc(p));
+            return FromUnscaled(LatLonToUnscaled(p));
         }
 
         /// <summary>
-        /// Reprojects a WebMercator X, Y vector into a different center, zoom and tile size
+        /// Projects a WebMercator X, Y vector into a different center, zoom and tile size
         /// </summary>
         /// <param name="p">WebMercator X, Y vector</param>
         /// <param name="center">Latitude, longitude vector of the center of the projection</param>
         /// <param name="zoom">Zoom of the projection</param>
         /// <param name="center">Tile size of the projection</param>
         /// <returns>WebMercator X, Y vector in the new projection</returns>
-        public Vector2 Reproject(Vector2 p, Map map)
+        public Vector2 Project(Vector2 p, WebMercator map)
         {
-            return map.ProjectUnscaled(IntoUnscaled(p));
+            return map.FromUnscaled(ToUnscaled(p));
         }
 
         /// <summary>
@@ -107,7 +107,7 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="p">Uncaled WebMercator X, Y vector</param>
         /// <returns>WebMercator X, Y vector in the new projection</returns>
-        public Vector2 ProjectUnscaled(Vector2 p)
+        public Vector2 FromUnscaled(Vector2 p)
         {
             return (p - Center) * TileSize * Math.Pow(2, Zoom);
         }
@@ -117,7 +117,7 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="p">WebMercator X, Y in this map's projection</param>
         /// <returns>Unscaled WebMercator X, Y vector</returns>
-        public Vector2 IntoUnscaled(Vector2 p)
+        public Vector2 ToUnscaled(Vector2 p)
         {
             return p / TileSize / Math.Pow(2, Zoom) + Center;
         }
@@ -129,34 +129,33 @@ namespace MAVAppBackend
         /// <returns>Latitude, Longitude vector</returns>
         public Vector2 ToLatLon(Vector2 p)
         {
-            return WebMercToLatLon(IntoUnscaled(p));
+            return UnscaledToLatLon(ToUnscaled(p));
         }
 
         /// <summary>
-        /// Returns meters per WebMercator unit (non scaled)
+        /// Returns meters per WebMercator unit
         /// </summary>
-        /// <param name="center">Center to take into account</param>
-        public double MeterPerWebMercUnit()
+        public double MeterPerUnit()
         {
             return Math.Cos(ToLatLon(Center).X * Math.PI / 180) * 6371000 * 2 * Math.PI / (TileSize * Math.Pow(2, Zoom));
         }
 
         /// <summary>
-        /// Converts Latitude, Longitude vector into non scaled/zoomed WebMercator X, Y vector
+        /// Converts Latitude, Longitude vector into Unscaled WebMercator X, Y vector
         /// </summary>
         /// <param name="p">Latitude, Longitude vector</param>
-        /// <returns>Non scaled/zoomed WebMercator X, Y vector</returns>
-        public static Vector2 LatLonToWebMerc(Vector2 p)
+        /// <returns>Unscaled WebMercator X, Y vector</returns>
+        public static Vector2 LatLonToUnscaled(Vector2 p)
         {
             return new Vector2((p.Y / 180 + 1) / 2, (Math.PI - Math.Log(Math.Tan(Math.PI / 4 + p.X * Math.PI / 360))) / (2 * Math.PI));
         }
 
         /// <summary>
-        /// Converts non scaled/zoomed WebMercator X, Y vector into Latitude, Longitude vector
+        /// Converts Unscaled WebMercator X, Y vector into Latitude, Longitude vector
         /// </summary>
-        /// <param name="p">Non scaled/zoomed WebMercator X, Y vector</param>
+        /// <param name="p">Unscaled WebMercator X, Y vector</param>
         /// <returns>Latitude, Longitude vector</returns>
-        public static Vector2 WebMercToLatLon(Vector2 p)
+        public static Vector2 UnscaledToLatLon(Vector2 p)
         {
             return new Vector2((Math.Atan(Math.Exp(Math.PI - 2 * Math.PI * p.Y)) - Math.PI / 4) * 360 / Math.PI, 180 * (p.X * 2 - 1));
         }

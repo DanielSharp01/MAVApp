@@ -44,7 +44,7 @@ namespace MAVAppBackend
                 obj["number-type"] = train.NumberType;
                 obj["delay-reason"] = train.DelayReason;
                 obj["misc-info"] = new JArray(train.MiscInfo.ToArray());
-                obj["enc-polyline"] = train.Polyline == null ? null : Polyline.EncodePoints(train.Polyline.Points.ToList(), 1E5f, Map.DefaultMap);
+                obj["enc-polyline"] = train.Polyline == null ? null : Polyline.EncodePoints(train.Polyline.Points.ToList(), 1E5f, WebMercator.DefaultMap);
                 obj["stations"] = new JArray();
                 JArray arr = obj["stations"] as JArray;
                 foreach (StationInfo station in train.Stations)

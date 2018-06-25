@@ -39,6 +39,18 @@ CREATE TABLE IF NOT EXISTS `stations` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2050 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Data exporting was unselected.
+-- Dumping structure for table mavapp.station_line
+CREATE TABLE IF NOT EXISTS `station_line` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `station_id` int(11) NOT NULL,
+  `line_id` int(11) NOT NULL,
+  `distance` double NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `FK_station_line_stations` (`station_id`),
+  KEY `FK_station_line_line_points` (`line_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5379 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Data exporting was unselected.
 -- Dumping structure for table mavapp.trains
 CREATE TABLE IF NOT EXISTS `trains` (
   `id` int(11) NOT NULL AUTO_INCREMENT,

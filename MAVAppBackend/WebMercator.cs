@@ -8,7 +8,7 @@ namespace MAVAppBackend
 {
     /// <summary>
     /// Contains functions regarding the Web Mercator projection. The object instance represents a specific WebMercator projection.
-    /// Terminology: When talking about an unscaled WebMercator I mean the projection given by new WebMercator(new Vector2(0, 0), 0, 1), no offset, no zoom and no tile scaling.
+    /// Terminology: When talking about an unscaled WebMercator I mean the projection given by new WebMercator(DefaultCenter, 0, 1), Hungarian default offset, no zoom and no tile scaling.
     /// </summary>
     public class WebMercator
     {
@@ -24,11 +24,6 @@ namespace MAVAppBackend
         /// Center of Hungary on Google maps
         /// </summary>
         public static readonly Vector2 DefaultCenter = new Vector2(47.1569903, 18.4769959);
-
-        /// <summary>
-        /// The unscaled map
-        /// </summary>
-        public static readonly WebMercator UnscaledMap = new WebMercator(new Vector2(0, 0), 0, 1);
 
         /// <summary>
         /// Default Map used throughout the application
@@ -137,7 +132,7 @@ namespace MAVAppBackend
         /// </summary>
         public double MeterPerUnit()
         {
-            return Math.Cos(ToLatLon(Center).X * Math.PI / 180) * 6371000 * 2 * Math.PI / (TileSize * Math.Pow(2, Zoom));
+            return Math.Cos(ToLatLon(Center).X * Math.PI / 180) * 6378137 * 2 * Math.PI / (TileSize * Math.Pow(2, Zoom));
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
 ﻿using MAVAppBackend.DataAccess;
+using MAVAppBackend.EntityMappers;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
@@ -29,6 +30,9 @@ namespace MAVAppBackend.DataAccess
 
         private StationLineMapper stationLineMapper;
         public StationLineMapper StationLineMapper { get => stationLineMapper ?? (stationLineMapper = new StationLineMapper(connection)); }
+
+        private TrainMapper trainMapper;
+        public TrainMapper TrainMapper { get => trainMapper ?? (trainMapper = new TrainMapper(connection)); }
 
         public void Dispose()
         {

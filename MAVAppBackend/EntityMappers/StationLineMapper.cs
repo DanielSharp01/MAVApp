@@ -1,11 +1,12 @@
-﻿using MAVAppBackend.Model;
+﻿using MAVAppBackend.DataAccess;
+using MAVAppBackend.Model;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace MAVAppBackend.DataAccess
+namespace MAVAppBackend.EntityMappers
 {
     public class StationLineMapper : EntityMapper<StationLine>
     {

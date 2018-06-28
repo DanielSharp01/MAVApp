@@ -1,4 +1,5 @@
-﻿using MAVAppBackend.Model;
+﻿using MAVAppBackend.DataAccess;
+using MAVAppBackend.Model;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
@@ -6,17 +7,19 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace MAVAppBackend.DataAccess
+namespace MAVAppBackend.EntityMappers
 {
     public class StationMapper : EntityMapper<Station>
     {
         public StationMapper(MySqlConnection connection)
             : base(connection, QueryBuilder.SelectEveryColumn("stations").Where("mav_found = 1"))
-        { }
+        {
+            EntityCacheForName  = new ReadOnlyDictionary<string, Station>(entityCacheForName);
+        }
 
         protected Dictionary<string, Station> entityCacheForName = new Dictionary<string, Station>();
 
-        public IReadOnlyDictionary<string, Station> EntityCacheForName { get => new ReadOnlyDictionary<string, Station>(entityCacheForName); }
+        public IReadOnlyDictionary<string, Station> EntityCacheForName { get; private set; }
 
         protected override Station createEntity(int id)
         {
@@ -71,26 +74,16 @@ namespace MAVAppBackend.DataAccess
             string normName = NormalizeName(name);
             bool hasCache = entityCacheForName.ContainsKey(normName);
             Station entity = createEntity(name);
-            if (!hasCache || forceUpdate) Fill(entity);
+            if (!hasCache || forceUpdate) FillByName(entity);
             return entity;
         }
 
-        public override void Fill(Station entity)
+        public void FillByName(Station entity)
         {
-            if (entity.ID != -1)
-            {
-                if (sbatchStrategy == null)
-                    fillByIDSingle(entity);
-                else
-                    sbatchStrategy.AddEntity(entity.ID, entity);
-            }
+            if (sbatchStrategyNormName == null)
+                fillByNormNameSingle(entity);
             else
-            {
-                if (sbatchStrategyNormName == null)
-                    fillByNormNameSingle(entity);
-                else
-                    sbatchStrategyNormName.AddEntity(entity.NormalizedName, entity);
-            }
+                sbatchStrategyNormName.AddEntity(entity.NormalizedName, entity);
         }
 
         public void EndSelectNormName()

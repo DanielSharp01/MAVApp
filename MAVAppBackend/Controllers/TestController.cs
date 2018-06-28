@@ -1,4 +1,5 @@
 ﻿using MAVAppBackend.DataAccess;
+using MAVAppBackend.EntityMappers;
 using MAVAppBackend.Model;
 using MAVAppBackend.SVG;
 using Microsoft.AspNetCore.Mvc;
@@ -56,7 +57,7 @@ namespace MAVAppBackend.Controller
 
             List<StationLine> allStationLines = Database.Instance.StationLineMapper.GetAll();
 
-            Station monorierdo = Database.Instance.StationMapper.EntityCache.Values.Where(s => s.NormalizedName == StationMapper.NormalizeName("monorierdo")).First();
+            /*Station monorierdo = Database.Instance.StationMapper.EntityCache.Values.Where(s => s.NormalizedName == StationMapper.NormalizeName("monorierdo")).First();
             Station monor = allStations.Where(s => s.NormalizedName == StationMapper.NormalizeName("monor")).First();
 
             StationLine a = allStationLines.Where(sl => sl.Station == monorierdo).First();
@@ -66,8 +67,20 @@ namespace MAVAppBackend.Controller
 
             StationLine c = Database.Instance.StationLineMapper.GetByID(4721);
 
-            Console.WriteLine("Distance: " + (b.Distance - a.Distance));
+            Console.WriteLine("Distance: " + (b.Distance - a.Distance));*/
 
+
+            Database.Instance.TrainMapper.BeginUpdate();
+            Train train = new Train(-1);
+            train.Fill("Train #1");
+            Database.Instance.TrainMapper.Update(train);
+            train = new Train(-1);
+            train.Fill("Train #2");
+            Database.Instance.TrainMapper.Update(train);
+            train = new Train(-1);
+            train.Fill("Train #3");
+            Database.Instance.TrainMapper.Update(train);
+            Database.Instance.TrainMapper.EndUpdate();
 
             foreach (Polyline polyline in allLines.Select(l => l.Polyline))
             {

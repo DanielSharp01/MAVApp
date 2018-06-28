@@ -13,18 +13,62 @@ namespace MAVAppBackend.DataAccess
         protected SelectQuery baseSelectQuery;
         protected string idColumn = "id";
 
+        protected Dictionary<int, E> entityCache = new Dictionary<int, E>();
+        public IReadOnlyDictionary<int, E> EntityCache { get; private set; }
+
+        protected BatchSelectStrategy<int, E> sbatchStrategy = null;
+
         public EntityMapper(MySqlConnection connection, SelectQuery baseSelectQuery)
         {
             this.connection = connection;
             this.baseSelectQuery = baseSelectQuery;
+            EntityCache = new ReadOnlyDictionary<int, E>(entityCache);
         }
-        
-        protected BatchSelectStrategy<int, E> sbatchStrategy = null;
 
         public virtual void BeginSelect(BatchSelectStrategy<int, E> sbatchStrategy)
         {
             if (this.sbatchStrategy != null) throw new InvalidOperationException("Can't begin a new batch before ending the active one.");
             this.sbatchStrategy = sbatchStrategy ?? throw new ArgumentNullException("sbatchStrategy");
+        }
+
+        public virtual void EndSelect()
+        {
+            if (sbatchStrategy == null) throw new InvalidOperationException("Can't end a batch before starting it.");
+            sbatchStrategy.BatchFill(connection, baseSelectQuery, idColumn, fillEntity);
+            sbatchStrategy = null;
+        }
+
+        public virtual E GetByID(int id, bool forceUpdate = true)
+        {
+            bool hasCache = entityCache.ContainsKey(id);
+            E entity = createEntityInternal(id);
+            if (!hasCache || forceUpdate) FillByID(entity);
+            return entity;
+        }
+
+        public void FillByID(E entity)
+        {
+            if (sbatchStrategy == null)
+                fillByIDSingle(entity);
+            else
+                sbatchStrategy.AddEntity(entity.ID, entity);
+        }
+
+        protected MySqlCommand getByIdCmd = null;
+        protected virtual void fillByIDSingle(E entity)
+        {
+            if (getByIdCmd == null)
+                getByIdCmd = baseSelectQuery.Where($"{idColumn} = @id").ToPreparedCommand(connection);
+
+            getByIdCmd.Parameters.Clear();
+            getByIdCmd.Parameters.AddWithValue("@id", entity.ID);
+            MySqlDataReader reader = getByIdCmd.ExecuteReader();
+            if (reader.Read())
+            {
+                fillEntity(entity, reader);
+            }
+
+            reader.Close();
         }
 
         protected E createEntityInternal(int id)
@@ -42,35 +86,8 @@ namespace MAVAppBackend.DataAccess
             return entity;
         }
 
-        public virtual E GetByID(int id, bool forceUpdate = true)
-        {
-            bool hasCache = entityCache.ContainsKey(id);
-            E entity = createEntityInternal(id);
-            if (!hasCache || forceUpdate) Fill(entity);
-            return entity;
-        }
-
-        public virtual void Fill(E entity)
-        {
-            if (sbatchStrategy == null)
-                fillByIDSingle(entity);
-            else
-                sbatchStrategy.AddEntity(entity.ID, entity);
-        }
-
-        protected Dictionary<int, E> entityCache = new Dictionary<int, E>();
-
-        public IReadOnlyDictionary<int, E> EntityCache { get => new ReadOnlyDictionary<int, E>(entityCache); }
-
         protected abstract E createEntity(int id);
         protected abstract bool fillEntity(E entity, MySqlDataReader reader);
-
-        public virtual void EndSelect()
-        {
-            if (sbatchStrategy == null) throw new InvalidOperationException("Can't end a batch before starting it.");
-            sbatchStrategy.BatchFill(connection, baseSelectQuery, idColumn, fillEntity);
-            sbatchStrategy = null;
-        }
 
         protected MySqlCommand getAllCmd = null;
         public virtual List<E> GetAll()
@@ -95,23 +112,6 @@ namespace MAVAppBackend.DataAccess
             reader.Close();
 
             return entities;
-        }
-
-        protected MySqlCommand getByIdCmd = null;
-        protected virtual void fillByIDSingle(E entity)
-        {
-            if (getByIdCmd == null)
-                getByIdCmd = baseSelectQuery.Where($"{idColumn} = @id").ToPreparedCommand(connection);
-
-            getByIdCmd.Parameters.Clear();
-            getByIdCmd.Parameters.AddWithValue("@id", entity.ID);
-            MySqlDataReader reader = getByIdCmd.ExecuteReader();
-            if (reader.Read())
-            {
-                fillEntity(entity, reader);
-            }
-
-            reader.Close();
         }
     }
 }

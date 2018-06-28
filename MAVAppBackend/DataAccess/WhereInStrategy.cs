@@ -32,8 +32,8 @@ namespace MAVAppBackend.DataAccess
             }
             else
             {
-                MySqlCommand cmd = unfilteredQuery.WhereIn(column, "@id", entities.Values.Count).ToPreparedCommand(connection);
-                cmd.Parameters.AddWithValues("@id", entities.Values.Select(e => e.ID));
+                MySqlCommand cmd = unfilteredQuery.WhereIn(column, "@key", entities.Values.Count).ToPreparedCommand(connection);
+                cmd.Parameters.AddWithValues("@key", entities.Keys);
                 MySqlDataReader reader = cmd.ExecuteReader();
                 if (reader.Read())
                 {

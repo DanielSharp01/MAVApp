@@ -73,7 +73,7 @@ namespace MAVAppBackend.EntityMappers
         {
             string normName = NormalizeName(name);
             bool hasCache = entityCacheForName.ContainsKey(normName);
-            Station entity = createEntity(name);
+            Station entity = createEntity(normName);
             if (!hasCache || forceUpdate) FillByName(entity);
             return entity;
         }

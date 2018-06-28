@@ -59,7 +59,7 @@ namespace MAVAppBackend.DataAccess
         {
             if (getByIdCmd == null)
                 getByIdCmd = baseSelectQuery.Where($"{idColumn} = @id").ToPreparedCommand(connection);
-
+            
             getByIdCmd.Parameters.Clear();
             getByIdCmd.Parameters.AddWithValue("@id", entity.ID);
             MySqlDataReader reader = getByIdCmd.ExecuteReader();

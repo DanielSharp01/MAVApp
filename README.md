@@ -13,11 +13,12 @@ It has become apparent that new conditions in the development of the application
 - [x] Rewrite SVG Library
 - [x] Code review on projections (previously known as Map)
 - [x] Get lines from .kmz file into the database
+- [x] Line - Station graph as static data
 - [ ] Data Access Layer rewrite
-- [ ] Line - Station graph as static data
-- [ ] MAVAPIParser - parsing tabular data
-- [ ] Selective API update (update whatever we can from any API)
 - [ ] Database designed around partial information
+- [ ] MAVAPIParser - parsing tabular data
+- [ ] MAVAPIParser - line mapping
+- [ ] Selective API update (update whatever we can from any API)
 
 ## Discovery favor own data
 

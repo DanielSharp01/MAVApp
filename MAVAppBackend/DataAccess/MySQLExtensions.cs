@@ -67,24 +67,12 @@ namespace MAVAppBackend.DataAccess
         /// </summary> 
         /// <param name="arrayName">Parameter name of the array</param>
         /// <param name="value">Value to add</param>
-        public static void AddArrayWithValue(this MySqlParameterCollection parameters, string arrayName, int[] value)
+        public static void AddWithValues<T>(this MySqlParameterCollection parameters, string arrayName, IEnumerable<T> values)
         {
-            for (int i = 0; i < value.Length; i++)
+            int id = 0;
+            foreach (T value in values)
             {
-                parameters.AddWithValue(arrayName + $"_{i}", value[i]);
-            }
-        }
-
-        /// <summary>
-        /// Adds an array of values in place of @arrayName_{i} parameters in an SQL query.
-        /// </summary> 
-        /// <param name="arrayName">Parameter name of the array</param>
-        /// <param name="value">Value to add</param>
-        public static void AddArrayWithValue(this MySqlParameterCollection parameters, string arrayName, string[] value)
-        {
-            for (int i = 0; i < value.Length; i++)
-            {
-                parameters.AddWithValue(arrayName + $"_{i}", value[i]);
+                parameters.AddWithValue(arrayName + $"_{id++}", value);
             }
         }
 

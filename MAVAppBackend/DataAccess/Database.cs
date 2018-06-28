@@ -27,6 +27,8 @@ namespace MAVAppBackend.DataAccess
         private LineMapper lineMapper;
         public LineMapper LineMapper { get => lineMapper ?? (lineMapper = new LineMapper(connection)); }
 
+        private StationLineMapper stationLineMapper;
+        public StationLineMapper StationLineMapper { get => stationLineMapper ?? (stationLineMapper = new StationLineMapper(connection)); }
 
         public void Dispose()
         {

@@ -1,4 +1,5 @@
-﻿using MySql.Data.MySqlClient;
+﻿using MAVAppBackend.Model;
+using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,72 +7,56 @@ using System.Threading.Tasks;
 
 namespace MAVAppBackend.DataAccess
 {
-    public class LineMapper
+    public class LineMapper : EntityMapper<Line>
     {
-        private MySqlConnection connection;
-
         public LineMapper(MySqlConnection connection)
+            : base(connection, QueryBuilder.SelectEveryColumn("line_points").OrderByAsc("id").OrderByAsc("number"))
+        { }
+
+        protected override Line createEntity(int id)
         {
-            this.connection = connection;
+            return new Line(id);
         }
 
-        private MySqlCommand getIdCmd = null;
-        public Line GetByID(int id)
+        protected override bool fillEntity(Line entity, MySqlDataReader reader)
         {
-            if (getIdCmd == null)
-            {
-                getIdCmd = new MySqlCommand("SELECT lat, lon FROM line_points WHERE id = @id ORDER BY `number` ASC", connection);
-                getIdCmd.Prepare();
-            }
-            getIdCmd.Parameters.Clear();
-            getIdCmd.Parameters.AddWithValue("id", id);
-            MySqlDataReader reader = getIdCmd.ExecuteReader();
-            if (!reader.HasRowsOrClose()) return null;
             List<Vector2> lineBuffer = new List<Vector2>();
-            while (reader.Read())
+            lineBuffer.Add(reader.GetVector2OrNull("lat", "lon"));
+            bool lastRead;
+            while (lastRead = reader.Read())
             {
+                if (entity.ID != reader.GetInt32("id")) break;
+
                 lineBuffer.Add(reader.GetVector2OrNull("lat", "lon"));
             }
 
-            reader.Close();
-            return new Line(id, new Polyline(lineBuffer));
+            entity.Fill(new Polyline(lineBuffer));
+
+            return lastRead;
         }
 
-        private MySqlCommand getAllCmd = null;
-        public List<Line> GetAll()
+        public override List<Line> GetAll()
         {
+            List<Line> entities = new List<Line>();
+
             if (getAllCmd == null)
-            {
-                getAllCmd = new MySqlCommand("SELECT id, lat, lon FROM line_points WHERE id > 0 ORDER BY id ASC, number ASC", connection);
-                getAllCmd.Prepare();
-            }
+                getAllCmd = baseSelectQuery.Where("id > 0").ToCommand(connection);
+
             MySqlDataReader reader = getAllCmd.ExecuteReader();
-            List<Line> results = new List<Line>();
-
-            List<Vector2> lineBuffer = new List<Vector2>();
-            int lastId = -1;
-            while (reader.Read())
+            if (reader.Read())
             {
-                int id = reader.GetInt32("id");
-                Vector2 gpsCoord = reader.GetVector2OrNull("lat", "lon");
-                if (lastId != -1 && id != lastId)
+                Line entity = createEntityInternal(reader.GetInt32(idColumn));
+                while (fillEntity(entity, reader))
                 {
-                    results.Add(new Line(lastId, new Polyline(lineBuffer)));
-                    lineBuffer.Clear();
+                    entities.Add(entity);
+                    entity = createEntityInternal(reader.GetInt32(idColumn));
                 }
-
-                lineBuffer.Add(gpsCoord);
-
-                lastId = id;
-            }
-
-            if (lineBuffer.Count > 0)
-            {
-                results.Add(new Line(lastId, new Polyline(lineBuffer)));
+                entities.Add(entity);
             }
 
             reader.Close();
-            return results;
+
+            return entities;
         }
     }
 }

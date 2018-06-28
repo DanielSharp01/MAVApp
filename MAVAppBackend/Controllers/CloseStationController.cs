@@ -16,12 +16,12 @@ namespace MAVAppBackend.Controller
             if (double.IsNaN(lat) || double.IsNaN(lon) || double.IsNaN(radius))
                 return BadRequestError("Parameters lat, lon and radius must exist and must be numbers.");
 
-            double kmpp = WebMercator.DefaultMap.MeterPerUnit() / 1000;
+            double kmpp = WebMercator.Default.MeterPerUnit() / 1000;
 
             List<(double distance, Station station)> stations = new List<(double distance, Station station)>();
             foreach (Station station in DatabaseLegacy.GetAllStations())
             {
-                double dist = (WebMercator.DefaultMap.FromLatLon(station.GPSCoord) - WebMercator.DefaultMap.FromLatLon(new Vector2(lat, lon))).Length * kmpp;
+                double dist = (WebMercator.Default.FromLatLon(station.GPSCoord) - WebMercator.Default.FromLatLon(new Vector2(lat, lon))).Length * kmpp;
                 if (dist <= radius)
                 {
                     // Implementing a standard insertion sort

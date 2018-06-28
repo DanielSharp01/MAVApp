@@ -69,11 +69,11 @@ namespace MAVAppBackend.Controller
             {
                 List<Train> trains = DatabaseLegacy.GetTrains(moving);
                 List<(double distance, Train train)> orderedTrains = new List<(double distance, Train train)>();
-                double kmpp = WebMercator.DefaultMap.MeterPerUnit() / 1000;
+                double kmpp = WebMercator.Default.MeterPerUnit() / 1000;
 
                 foreach (Train train in trains)
                 {
-                    double dist = (WebMercator.DefaultMap.FromLatLon(train.GPSPosition) - WebMercator.DefaultMap.FromLatLon(new Vector2(lat, lon))).Length * kmpp;
+                    double dist = (WebMercator.Default.FromLatLon(train.GPSPosition) - WebMercator.Default.FromLatLon(new Vector2(lat, lon))).Length * kmpp;
                     if (dist <= radius)
                     {
                         // Implementing a standard insertion sort

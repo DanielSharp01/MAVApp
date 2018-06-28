@@ -28,7 +28,7 @@ namespace MAVAppBackend
 
             return true;
         }
-        public JObject Train(Train train, TrainDataFilter dataFilter)
+        /*public JObject Train(Train train, TrainDataFilter dataFilter)
         {
             JObject obj = new JObject();
             if (train == null)
@@ -82,7 +82,7 @@ namespace MAVAppBackend
             }
 
             return obj;
-        }
+        }*/
 
         public IActionResult Success(JToken obj)
         {

@@ -28,7 +28,7 @@ namespace MAVAppBackend
         /// <summary>
         /// Default Map used throughout the application
         /// </summary>
-        public static readonly WebMercator DefaultMap = new WebMercator();
+        public static readonly WebMercator Default = new WebMercator();
 
         /// <summary>
         /// Tile size of this map

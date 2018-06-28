@@ -1,4 +1,5 @@
 ﻿using MAVAppBackend.DataAccess;
+using MAVAppBackend.Model;
 using MAVAppBackend.SVG;
 using Microsoft.AspNetCore.Mvc;
 using MySql.Data.MySqlClient;
@@ -26,7 +27,7 @@ namespace MAVAppBackend.Controller
         }
 
         [HttpGet]
-        public IActionResult Get(string pan = null, [ModelBinder(Name = "pan-station")] string panStation = null, double zoom = WebMercator.DefaultZoom)
+        public IActionResult Get(string pan = null, [ModelBinder(Name = "pan-station")] string panStation = null, double zoom = WebMercator.DefaultZoom, [ModelBinder(Name = "highlight-line")] int highlightLine = -1)
         {
             Vector2 panVec = Vector2.Zero;
 
@@ -53,60 +54,52 @@ namespace MAVAppBackend.Controller
 
             svg.Objects.Add(new SVGPolyline(Database.Instance.LineMapper.GetByID(0).Polyline.Points.Select(p => projection.FromLatLon(p) + new Vector2(1920, 1080) / 2).ToList()) { StrokeColor = "black", StrokeWidth = 1 });
 
-            List<(Station station, Line line, double dist)> relationalTable = new List<(Station station, Line line, double dist)>();
+            List<StationLine> allStationLines = Database.Instance.StationLineMapper.GetAll();
 
-            foreach (Line line in allLines)
+            Station monorierdo = Database.Instance.StationMapper.EntityCache.Values.Where(s => s.NormalizedName == StationMapper.NormalizeName("monorierdo")).First();
+            Station monor = allStations.Where(s => s.NormalizedName == StationMapper.NormalizeName("monor")).First();
+
+            StationLine a = allStationLines.Where(sl => sl.Station == monorierdo).First();
+            StationLine b = allStationLines.Where(sl => sl.Station == monor).First();
+
+            
+
+            StationLine c = Database.Instance.StationLineMapper.GetByID(4721);
+
+            Console.WriteLine("Distance: " + (b.Distance - a.Distance));
+
+
+            foreach (Polyline polyline in allLines.Select(l => l.Polyline))
             {
-                foreach (Station station in allStations)
-                {
-                    double dist = line.Polyline.GetProjectedDistance(station.GPSCoord, 0.2);
-
-                    if (!double.IsNaN(dist))
-                    {
-                        relationalTable.Add((station, line, dist));
-                    }
-                }
+                svg.Objects.Add(new SVGPolyline(polyline.Points.Select(p => projection.FromLatLon(p) + new Vector2(1920, 1080) / 2).ToList()) { StrokeColor = "#138D75", StrokeWidth = 1 });
             }
 
-            foreach (Line line in allLines)
+            Database.Instance.StationMapper.BeginSelectNormName(new WhereInStrategy<string, Station>());
+            Station[] stations = new Station[]
             {
-                svg.Objects.Add(new SVGPolyline(line.Polyline.Points.Select(p => projection.FromLatLon(p) + new Vector2(1920, 1080) / 2).ToList()) { StrokeColor = "#138D75", StrokeWidth = 1 });
+                Database.Instance.StationMapper.GetByName("Monor"),
+                Database.Instance.StationMapper.GetByName("Monorierdő"),
+                Database.Instance.StationMapper.GetByName("Ferihegy")
+            };
+
+            Database.Instance.StationMapper.EndSelectNormName();
+
+            foreach (Station station in stations)
+            {
+                Console.WriteLine(station.Name);
             }
+
+            Polyline highlightable = allLines.Where(l => l.ID == highlightLine).FirstOrDefault()?.Polyline;
+            //if (highlightable == null && a.Line != null) highlightable = a.Line.Polyline.SegmentBetween(a.Station.GPSCoord, b.Station.GPSCoord, 0.25);
+
+            if (highlightable != null) svg.Objects.Add(new SVGPolyline(highlightable.Points.Select(p => projection.FromLatLon(p) + new Vector2(1920, 1080) / 2).ToList()) { StrokeColor = "red", StrokeWidth = 2 });
 
             foreach (Station station in allStations)
             {
                 svg.Objects.Add(new SVGCircle(projection.FromLatLon(station.GPSCoord) + new Vector2(1920, 1080) / 2, 2) { FillColor = "#D75412" });
             }
 
-            foreach ((Station station, Line line, double dist) in relationalTable)
-            {
-                Console.WriteLine(station.Name + " on line " + line.ID + " @ distance " + dist);
-            }
-
-
-            MySqlConnection conn = new MySqlConnection("Host=127.0.0.1;Database=mavapp;UserName=root;Password=mysql");
-            conn.Open();
-
-            StringBuilder values = new StringBuilder();
-            for (int i = 0; i < relationalTable.Count; i++)
-            {
-                values.Append($"(NULL, @station_{i}, @line_{i}, @dist_{i})");
-                if (i < relationalTable.Count - 1) values.Append(", ");
-            }
-
-            MySqlCommand cmd = new MySqlCommand($"INSERT INTO station_line VALUES {values.ToString()}", conn);
-            cmd.Prepare();
-
-
-            for (int i = 0; i < relationalTable.Count; i++)
-            {
-                cmd.Parameters.AddWithValue($"station_{i}", relationalTable[i].station.ID);
-                cmd.Parameters.AddWithValue($"line_{i}", relationalTable[i].line.ID);
-                cmd.Parameters.AddWithValue($"dist_{i}", relationalTable[i].dist);
-            }
-            cmd.ExecuteNonQuery();
-            conn.Close();
-
+            svg.Objects.Add(new SVGCircle(projection.FromLatLon(WebMercator.DefaultCenter + panVec) + new Vector2(1920, 1080) / 2, 10) { StrokeColor = "gray", StrokeWidth = 2 });
 
             return SVG(svg);
         }

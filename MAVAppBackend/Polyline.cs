@@ -36,11 +36,26 @@ namespace MAVAppBackend
             }
         }
 
+        /// <summary>
+        /// Points representing the polyline in the WebMercator.Default projection
+        /// </summary>
+        public IEnumerable<Vector2> ProjectedPoints
+        {
+            get
+            {
+                foreach (Vector2 p in projectedPoints)
+                {
+                    yield return p;
+                }
+                yield break;
+            }
+        }
+
         /// <param name="points">Points representing the polyline as latitude, longitude</param>
         public Polyline(List<Vector2> points)
         {
             this.points.AddRange(points);
-            projectedPoints.AddRange(points.Select(p => WebMercator.DefaultMap.FromLatLon(p)));
+            projectedPoints.AddRange(points.Select(p => WebMercator.Default.FromLatLon(p)));
         }
 
         /// <summary>
@@ -53,22 +68,20 @@ namespace MAVAppBackend
         {
             if (km < 0) return points.First();
 
-            double kmpu = WebMercator.DefaultMap.MeterPerUnit() / 1000;
+            double kmpu = WebMercator.Default.MeterPerUnit() / 1000;
 
             for (int i = 0; i < projectedPoints.Count - 1; i++)
             {
                 double pdist = (projectedPoints[i] - projectedPoints[i + 1]).Length * kmpu;
                 if (km < pdist)
                 {
-                    return WebMercator.DefaultMap.ToLatLon(Vector2.Lerp(projectedPoints[i], projectedPoints[i + 1], km / pdist));
+                    return WebMercator.Default.ToLatLon(Vector2.Lerp(projectedPoints[i], projectedPoints[i + 1], km / pdist));
                 }
                 else km -= pdist;
             }
 
             return points.Last(); // We don't have to convert back yay
         }
-
-        static int it = 0;
 
         /// <summary>
         /// <para>Gets the distance on the line of a point from the start when projected onto the closest line segment.</para>
@@ -79,8 +92,8 @@ namespace MAVAppBackend
         /// <returns>Distance from the start if projectable, NAN otherwise</returns>
         public double GetProjectedDistance(Vector2 point, double distanceLimit)
         {
-            point = WebMercator.DefaultMap.FromLatLon(point);
-            double kmpp = WebMercator.DefaultMap.MeterPerUnit() / 1000;
+            point = WebMercator.Default.FromLatLon(point);
+            double kmpp = WebMercator.Default.MeterPerUnit() / 1000;
 
             int bestIndex = -1;
             double bestProj = 0;
@@ -118,6 +131,58 @@ namespace MAVAppBackend
             km += bestProj * (projectedPoints[bestIndex + 1] - projectedPoints[bestIndex]).Length * kmpp;
 
             return km;
+        }
+
+        /// <summary>
+        /// Returns a polyline segment between point a and point b
+        /// </summary>
+        /// <param name="a">Point a</param>
+        /// <param name="b">Point b</param>
+        /// <param name="distanceLimit">The distance limit with which a point is still considered projectable</param>
+        /// <returns>If a or b are projectable the segment between them as a polyline, if not null</returns>
+        public Polyline SegmentBetween(Vector2 a, Vector2 b, double distanceLimit)
+        {
+            List<Vector2> segmentPoints = new List<Vector2>();
+
+            double aDist = GetProjectedDistance(a, distanceLimit);
+            double bDist = GetProjectedDistance(b, distanceLimit);
+
+            if (double.IsNaN(aDist) || double.IsNaN(bDist)) return null;
+
+            if (aDist > bDist)
+            {
+                Vector2 tmp = a;
+                a = b;
+                b = tmp;
+
+                double tmpDist = aDist;
+                aDist = bDist;
+                bDist = tmpDist;
+            }
+
+            double kmpu = WebMercator.Default.MeterPerUnit() / 1000;
+            double totalDistance = 0;
+            for (int i = 0; i < projectedPoints.Count - 1; i++)
+            {
+                double pdist = (projectedPoints[i] - projectedPoints[i + 1]).Length * kmpu;
+
+                if (aDist <= totalDistance + pdist && segmentPoints.Count == 0)
+                {
+                    segmentPoints.Add(a);
+                }
+                else if (totalDistance + pdist < bDist && segmentPoints.Count > 0)
+                {
+                    segmentPoints.Add(points[i + 1]);
+                }
+                else if (segmentPoints.Count > 0)
+                {
+                    segmentPoints.Add(b);
+                }
+
+                totalDistance += pdist;
+            }
+
+            return new Polyline(segmentPoints);
         }
 
         /// <summary>

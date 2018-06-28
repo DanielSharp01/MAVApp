@@ -1,88 +1,120 @@
-﻿using MySql.Data.MySqlClient;
+﻿using MAVAppBackend.Model;
+using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 
 namespace MAVAppBackend.DataAccess
 {
-    public class StationMapper
+    public class StationMapper : EntityMapper<Station>
     {
-        private MySqlConnection connection;
-
         public StationMapper(MySqlConnection connection)
+            : base(connection, QueryBuilder.SelectEveryColumn("stations").Where("mav_found = 1"))
+        { }
+
+        protected Dictionary<string, Station> entityCacheForName = new Dictionary<string, Station>();
+
+        public IReadOnlyDictionary<string, Station> EntityCacheForName { get => new ReadOnlyDictionary<string, Station>(entityCacheForName); }
+
+        protected override Station createEntity(int id)
         {
-            this.connection = connection;
-        }
-        
-
-        private MySqlCommand getIdCmd = null;
-        public Station GetByID(int id)
-        {
-            if (getIdCmd == null)
-            {
-                getIdCmd = new MySqlCommand("SELECT name, lat, lon FROM station_view WHERE id = @id", connection);
-                getIdCmd.Prepare();
-            }
-            getIdCmd.Parameters.Clear();
-            getIdCmd.Parameters.AddWithValue("id", id);
-            MySqlDataReader reader = getIdCmd.ExecuteReader();
-            if (!reader.HasRowsOrClose()) return null;
-            reader.Read();
-
-            string name = reader.GetStringOrNull("name");
-            Vector2 gpsCoord = reader.GetVector2OrNull("lat", "lon");
-
-            reader.Close();
-            return new Station(id, name, gpsCoord);
+            return new Station(id);
         }
 
-        private MySqlCommand getNameCmd = null;
-        public Station GetByName(string stationName)
+        private Station createEntity(string normName)
         {
-            string normName = NormalizeName(stationName);
-            if (getNameCmd == null)
+            Station entity;
+            if (entityCacheForName.ContainsKey(normName))
             {
-                getNameCmd = new MySqlCommand("SELECT id, name, lat, lon FROM stations WHERE norm_name = @norm_name AND mav_found = 1", connection);
-                getNameCmd.Prepare();
+                entity = entityCacheForName[normName];
             }
-            getNameCmd.Parameters.Clear();
-            getNameCmd.Parameters.AddWithValue("norm_name", normName);
-            MySqlDataReader reader = getNameCmd.ExecuteReader();
-            if (!reader.HasRowsOrClose()) return null;
-            reader.Read();
-
-            int id = reader.GetInt32("id");
-            string name = reader.GetStringOrNull("name");
-            Vector2 gpsCoord = reader.GetVector2OrNull("lat", "lon");
-
-            reader.Close();
-            return new Station(id, name, gpsCoord);
+            else
+            {
+                entity = new Station(normName);
+                entityCacheForName.Add(normName, entity);
+            }
+            return entity;
         }
 
-        private MySqlCommand getAllCmd = null;
-        public List<Station> GetAll()
+        protected override bool fillEntity(Station entity, MySqlDataReader reader)
         {
-            if (getAllCmd == null)
+            if (entity.ID != -1)
             {
-                getAllCmd = new MySqlCommand("SELECT id, name, lat, lon FROM stations WHERE mav_found = 1", connection);
-                getAllCmd.Prepare();
+                string name = reader.GetStringOrNull("name");
+                string normName = reader.GetStringOrNull("norm_name");
+                Vector2 gpsCoord = reader.GetVector2OrNull("lat", "lon");
+                entity.Fill(name, normName, gpsCoord);
             }
-            
-            MySqlDataReader reader = getAllCmd.ExecuteReader();
-            List<Station> results = new List<Station>();
-
-            while (reader.Read())
+            else
             {
                 int id = reader.GetInt32("id");
                 string name = reader.GetStringOrNull("name");
                 Vector2 gpsCoord = reader.GetVector2OrNull("lat", "lon");
+                entity.Fill(id, name, gpsCoord);
+            }
 
-                results.Add(new Station(id, name, gpsCoord));
+            return reader.Read();
+        }
+
+        protected BatchSelectStrategy<string, Station> sbatchStrategyNormName = null;
+
+        public void BeginSelectNormName(BatchSelectStrategy<string, Station> sbatchStrategy)
+        {
+            if (sbatchStrategyNormName != null) throw new InvalidOperationException("Can't begin a new batch before ending the active one.");
+            sbatchStrategyNormName = sbatchStrategy ?? throw new ArgumentNullException("sbatchStrategy");
+        }
+
+        public Station GetByName(string name, bool forceUpdate = true)
+        {
+            string normName = NormalizeName(name);
+            bool hasCache = entityCacheForName.ContainsKey(normName);
+            Station entity = createEntity(name);
+            if (!hasCache || forceUpdate) Fill(entity);
+            return entity;
+        }
+
+        public override void Fill(Station entity)
+        {
+            if (entity.ID != -1)
+            {
+                if (sbatchStrategy == null)
+                    fillByIDSingle(entity);
+                else
+                    sbatchStrategy.AddEntity(entity.ID, entity);
+            }
+            else
+            {
+                if (sbatchStrategyNormName == null)
+                    fillByNormNameSingle(entity);
+                else
+                    sbatchStrategyNormName.AddEntity(entity.NormalizedName, entity);
+            }
+        }
+
+        public void EndSelectNormName()
+        {
+            if (sbatchStrategyNormName == null) throw new InvalidOperationException("Can't end a batch before starting it.");
+            sbatchStrategyNormName.BatchFill(connection, baseSelectQuery, "norm_name", fillEntity);
+            sbatchStrategyNormName = null;
+        }
+
+        MySqlCommand getByNormNameCmd = null;
+        protected virtual void fillByNormNameSingle(Station entity)
+        {
+            if (getByNormNameCmd == null)
+                getByNormNameCmd = baseSelectQuery.Where($"norm_name = @norm_name").ToPreparedCommand(connection);
+
+            getByNormNameCmd.Parameters.Clear();
+            getByNormNameCmd.Parameters.AddWithValue("@norm_name", entity.NormalizedName);
+            MySqlDataReader reader = getByNormNameCmd.ExecuteReader();
+            if (reader.Read())
+            {
+                fillEntity(entity, reader);
             }
 
             reader.Close();
-            return results;
         }
 
         /// <summary>

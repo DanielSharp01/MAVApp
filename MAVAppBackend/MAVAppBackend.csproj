@@ -10,6 +10,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Controllers\CloseStationController.cs" />
+    <Compile Remove="Controllers\RouteTrainsController.cs" />
+    <Compile Remove="Controllers\StationTrainsController.cs" />
+    <Compile Remove="Controllers\TrainController.cs" />
+    <Compile Remove="Controllers\TrainsController.cs" />
+    <Compile Remove="Database.cs" />
+    <Compile Remove="StationInfo.cs" />
+    <Compile Remove="Train.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="wwwroot\" />
   </ItemGroup>
 

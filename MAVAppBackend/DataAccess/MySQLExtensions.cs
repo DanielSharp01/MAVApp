@@ -29,6 +29,26 @@ namespace MAVAppBackend.DataAccess
         }
 
         /// <summary>
+        /// Gets the value of a specified column as a DateTime.
+        /// </summary>
+        /// <param name="columnName">The column name</param>
+        /// <returns>DateTime at columnName if not null, null otherwise</returns>
+        public static DateTime? GetDateTimeOrNull(this MySqlDataReader reader, string columnName)
+        {
+            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? null : (DateTime?)reader.GetDateTime(columnName);
+        }
+
+        /// <summary>
+        /// Gets the value of a specified column as an integer.
+        /// </summary>
+        /// <param name="columnName">The column name</param>
+        /// <returns>Integer at columnName if not null, null otherwise</returns>
+        public static int? GetInt32OrNull(this MySqlDataReader reader, string columnName)
+        {
+            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? null : (int?)reader.GetInt32(columnName);
+        }
+
+        /// <summary>
         /// Gets the value of a specified column as an integer. When null the default value is used instead.
         /// </summary>
         /// <param name="columnName">The column name</param>

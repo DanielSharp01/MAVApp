@@ -18,13 +18,23 @@ namespace MAVAppBackend
     {
         public static void Main(string[] args)
         {
-            //MAVAPI.RequestStation("Budapest-Nyugati", DateTime.Now);
+            //StreamWriter writer = new StreamWriter(@"C:\users\DanielSharp\Desktop\train_api.html");
+            //JObject jobj = MAVAPI.RequestTrain(521);
+            //writer.Write(jobj["d"]["result"]["html"]);
+            //writer.Close();
+
+            //writer = new StreamWriter(@"C:\users\DanielSharp\Desktop\station_api.html");
+            //jobj = MAVAPI.RequestStation("Budapest-Nyugati", DateTime.Now);
+            //writer.Write(jobj["d"]["result"]);
+            //writer.Close();
+
+            //writer = new StreamWriter(@"C:\users\DanielSharp\Desktop\route_api.html");
+            //jobj = MAVAPI.RequestRoute("Budapest-Nyugati", "Cegléd", null, DateTime.Now);
+            //writer.Write(jobj["d"]["result"]);
+            //writer.Close();
             using (Database db = Database.Instance)
             {
-                // DatabaseLegacy.Initialize();
-                // DatabaseLegacy.UpdateDynamicData(MAVAPI.RequestTrains());
                 BuildWebHost(args).Run();
-                // DatabaseLegacy.Terminate();
             }
         }
 

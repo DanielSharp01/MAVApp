@@ -16,7 +16,7 @@ namespace MAVAppBackend.DataAccess
             string prefix = "";
             foreach (string column in columns)
             {
-                builder.Append(prefix + column);
+                builder.Append($"{prefix}`{column}`");
                 prefix = ", ";
             }
             builder.Append($" FROM `{from}`");

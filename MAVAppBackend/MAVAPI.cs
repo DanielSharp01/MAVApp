@@ -55,11 +55,20 @@ namespace MAVAppBackend
     }
 
     /// <summary>
-    /// Exception thrown if the parsing of MAV API returned HTMLs fail
+    /// Exception thrown if the MAV API fails
     /// </summary>
     public class MAVAPIException : Exception
     {
         public MAVAPIException(string message) : base(message)
+        { }
+    }
+
+    /// <summary>
+    /// Exception thrown if the parsing of MAV API returned HTMLs fail
+    /// </summary>
+    public class MAVParseException : MAVAPIException
+    {
+        public MAVParseException(string message) : base(message)
         { }
     }
 
@@ -105,6 +114,31 @@ namespace MAVAppBackend
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(e.Message);
+                Console.ResetColor();
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Request a train from MÁV
+        /// </summary>
+        /// <param name="elviraID">Unique ID per train class</param>
+        /// <returns>JSON object of the train</returns>
+        public static JObject RequestTrain(int trainId)
+        {
+            try
+            {
+                JObject request = new JObject();
+                request["a"] = "TRAIN";
+                request["jo"] = new JObject();
+                request["jo"]["vsz"] = "55" + trainId;
+                JObject response = RequestMAV(request);
+                return response;
+            }
+            catch (MAVAPIException e)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("MAVAPIException: " + e.Message);
                 Console.ResetColor();
                 return null;
             }

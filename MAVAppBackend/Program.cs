@@ -1,16 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using MySql.Data.MySqlClient;
-using Newtonsoft.Json.Linq;
 using MAVAppBackend.DataAccess;
+using MAVAppBackend.Model;
 
 namespace MAVAppBackend
 {
@@ -18,29 +8,27 @@ namespace MAVAppBackend
     {
         public static void Main(string[] args)
         {
-            //StreamWriter writer = new StreamWriter(@"C:\users\DanielSharp\Desktop\train_api.html");
-            //JObject jobj = MAVAPI.RequestTrain(521);
-            //writer.Write(jobj["d"]["result"]["html"]);
-            //writer.Close();
-
-            //writer = new StreamWriter(@"C:\users\DanielSharp\Desktop\station_api.html");
-            //jobj = MAVAPI.RequestStation("Budapest-Nyugati", DateTime.Now);
-            //writer.Write(jobj["d"]["result"]);
-            //writer.Close();
-
-            //writer = new StreamWriter(@"C:\users\DanielSharp\Desktop\route_api.html");
-            //jobj = MAVAPI.RequestRoute("Budapest-Nyugati", "Cegléd", null, DateTime.Now);
-            //writer.Write(jobj["d"]["result"]);
-            //writer.Close();
-            using (Database db = Database.Instance)
+            using (Database.Instance)
             {
-                BuildWebHost(args).Run();
+                Database.Instance.TestMapper.BeginSelect();
+                TestEntity david = Database.Instance.TestMapper.GetByKey(1);
+                TestEntity ellie = Database.Instance.TestMapper.GetByKey(2);
+                Database.Instance.TestMapper.EndSelect();
+                david.Money -= 100;
+                david.Coord = new Vector2(40, 60);
+                ellie.Money += 100;
+                david.Name = "<cannot be set>";
+                Database.Instance.TestMapper.BeginUpdate();
+                Database.Instance.TestMapper.UpdateSaveCache();
+                Database.Instance.TestMapper.EndUpdate();
             }
+
+            Console.ReadLine();
         }
 
-        public static IWebHost BuildWebHost(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>()
-                .Build();
+        //public static IWebHost BuildWebHost(string[] args) =>
+        //    WebHost.CreateDefaultBuilder(args)
+        //        .UseStartup<Startup>()
+        //        .Build();
     }
 }

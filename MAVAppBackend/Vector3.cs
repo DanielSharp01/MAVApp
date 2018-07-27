@@ -50,6 +50,11 @@ namespace MAVAppBackend
             Z = z;
         }
 
+        public Vector3 Clone()
+        {
+            return new Vector3(X, Y, Z);
+        }
+
         public static Vector3 operator+(Vector3 a, Vector3 b)
         {
             return new Vector3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
@@ -159,12 +164,15 @@ namespace MAVAppBackend
 
         public static bool operator==(Vector3 a, Vector3 b)
         {
+            if (ReferenceEquals(a, b)) return true;
+            if (ReferenceEquals(a, null)) return false;
+
             return a.Equals(b);
         }
 
         public static bool operator!=(Vector3 a, Vector3 b)
         {
-            return !a.Equals(b);
+            return !(a == b);
         }
 
         public override int GetHashCode()

@@ -1,10 +1,9 @@
-﻿using MAVAppBackend.DataAccess;
-using MAVAppBackend.EntityMappers;
+﻿using MAVAppBackend.EntityMappers;
 using MySql.Data.MySqlClient;
+using SharpEntities;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using MAVAppBackend.Model;
 
 namespace MAVAppBackend.DataAccess
 {
@@ -13,7 +12,7 @@ namespace MAVAppBackend.DataAccess
         private MySqlConnection connection;
 
         private static Database instance;
-        public static Database Instance { get => instance ?? (instance = new Database(new MySqlConnection("Host=127.0.0.1;Database=mavapp;UserName=root;Password=mysql"))); }
+        public static Database Instance => instance ?? (instance = new Database(new MySqlConnection("Host=127.0.0.1;Database=mavapp;UserName=root;Password=mysql")));
 
         private Database(MySqlConnection connection)
         {
@@ -23,20 +22,17 @@ namespace MAVAppBackend.DataAccess
 
         // Mappers
         private StationMapper stationMapper;
-        public StationMapper StationMapper { get => stationMapper ?? (stationMapper = new StationMapper(connection)); }
+        public StationMapper StationMapper => stationMapper ?? (stationMapper = new StationMapper(connection));
 
-        private LineMapper lineMapper;
-        public LineMapper LineMapper { get => lineMapper ?? (lineMapper = new LineMapper(connection)); }
+        private StationNNKeyMapper stationNNKeyMapper;
+        public StationNNKeyMapper StationNNKeyMapper => stationNNKeyMapper ?? (stationNNKeyMapper = new StationNNKeyMapper(connection));
 
-        private StationLineMapper stationLineMapper;
-        public StationLineMapper StationLineMapper { get => stationLineMapper ?? (stationLineMapper = new StationLineMapper(connection)); }
-
-        private TrainMapper trainMapper;
-        public TrainMapper TrainMapper { get => trainMapper ?? (trainMapper = new TrainMapper(connection)); }
+        private TestEntityMapper testMapper;
+        public TestEntityMapper TestMapper => testMapper ?? (testMapper = new TestEntityMapper(connection));
 
         public void Dispose()
         {
-            if (connection != null) connection.Close();
+            connection?.Close();
             connection = null;
         }
     }

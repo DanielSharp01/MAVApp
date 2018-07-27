@@ -24,38 +24,21 @@ namespace MAVAppBackend
         /// <summary>
         /// Points representing the polyline as latitude, longitude
         /// </summary>
-        public IEnumerable<Vector2> Points
-        {
-            get
-            {
-                foreach (Vector2 p in points)
-                {
-                    yield return p;
-                }
-                yield break;
-            }
-        }
+        public IReadOnlyList<Vector2> Points;
 
         /// <summary>
         /// Points representing the polyline in the WebMercator.Default projection
         /// </summary>
-        public IEnumerable<Vector2> ProjectedPoints
-        {
-            get
-            {
-                foreach (Vector2 p in projectedPoints)
-                {
-                    yield return p;
-                }
-                yield break;
-            }
-        }
+        public IReadOnlyList<Vector2> ProjectedPoints;
 
         /// <param name="points">Points representing the polyline as latitude, longitude</param>
         public Polyline(List<Vector2> points)
         {
             this.points.AddRange(points);
+            Points = points.AsReadOnly();
+
             projectedPoints.AddRange(points.Select(p => WebMercator.Default.FromLatLon(p)));
+            ProjectedPoints = projectedPoints.AsReadOnly();
         }
 
         /// <summary>
@@ -234,7 +217,7 @@ namespace MAVAppBackend
         /// <param name="points">Points as latitude, longitude</param>
         /// <param name="precisionFactor">Precision factor to encode with.</param>
         /// <returns>Encoded polyline</returns>
-        public static string EncodePoints(List<Vector2> points, double precisionFactor)
+        public static string EncodePoints(IReadOnlyList<Vector2> points, double precisionFactor)
         {
             string output = encodeHelper(points[0].X, 0, precisionFactor) + encodeHelper(points[0].Y, 0, precisionFactor);
 

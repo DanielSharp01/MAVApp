@@ -12,8 +12,8 @@ namespace MAVAppBackend.Model
         public Train Parent { private set; get; }
         public int Number { private set; get; }
 
-        public TrainStation(int id)
-            : base(id)
+        public TrainStation(int key)
+            : base(key)
         { }
 
         public void Fill(string name, Train parent, int number)

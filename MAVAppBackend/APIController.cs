@@ -34,7 +34,7 @@ namespace MAVAppBackend
             if (train == null)
                 return null;
 
-            obj["id"] = train.ID;
+            obj["id"] = train.Key;
             obj["elvira-id"] = train.ElviraID;
             if (dataFilter != TrainDataFilter.DynamicOnly)
             {

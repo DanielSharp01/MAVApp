@@ -11,7 +11,7 @@ namespace MAVAppBackend.EntityMappers
     public class TrainMapper : SimpleUpdatableEntityMapper<Train>
     {
         public TrainMapper(MySqlConnection connection)
-            : base(connection, QueryBuilder.SelectEveryColumn("trains"), "trains", new string[] { "id", "name", "from", "to", "type", "expiry_date" })
+            : base(connection, QueryBuilder.SelectEveryColumn("trains"), "trains", new string[] { "id", "name", "from", "to", "type", "expiry_date", "enc_polyline" })
         { }
 
         protected override Train createEntity(int id)
@@ -21,25 +21,21 @@ namespace MAVAppBackend.EntityMappers
 
         protected override bool fillEntity(Train entity, MySqlDataReader reader)
         {
-            string name = reader.GetStringOrNull("name");
-            string from = reader.GetStringOrNull("from");
-            string to = reader.GetStringOrNull("to");
-            string type = reader.GetStringOrNull("type");
+            string name = DataReaderExtensions.GetString(reader, "name");
+            string from = DataReaderExtensions.GetString(reader, "from");
+            string to = DataReaderExtensions.GetString(reader, "to");
+            string type = DataReaderExtensions.GetString(reader, "type");
             DateTime? expiryDate = reader.GetDateTimeOrNull("expiry_date");
+            Polyline polyline = reader.GetPolylineOrNull("enc_polyline");
 
-            Station fromStation = from == null ? null : Database.Instance.StationMapper.GetByName(from, false);
-            if (!fromStation.Filled) fromStation = null;
-            Station toStation = from == null ? null : Database.Instance.StationMapper.GetByName(to, false);
-            if (!toStation.Filled) toStation = null;
-
-            entity.Fill(name, from, fromStation, to, toStation, type, expiryDate);
+            entity.Fill(name, from, to, type, expiryDate, polyline);
 
             return reader.Read();
         }
 
         protected override void updateCachedEntry(Train cachedEntity, Train updatedEntity)
         {
-            cachedEntity.Fill(updatedEntity.Name, updatedEntity.From, updatedEntity.FromStation, updatedEntity.To, updatedEntity.ToStation, updatedEntity.Type, updatedEntity.ExpiryDate);
+            cachedEntity.Fill(updatedEntity.Name, updatedEntity.From, updatedEntity.To, updatedEntity.Type, updatedEntity.ExpiryDate, updatedEntity.Polyline);
         }
 
         public override List<Train> GetAll()
@@ -59,7 +55,7 @@ namespace MAVAppBackend.EntityMappers
         protected override void fillByIDSingle(Train entity)
         {
             Database.Instance.StationMapper.BeginSelect(new WhereInStrategy<int, Station>());
-            base.fillByIDSingle(entity);
+            base.fillByKeySingle(entity);
             Database.Instance.StationMapper.EndSelect();
         }
 
@@ -74,7 +70,7 @@ namespace MAVAppBackend.EntityMappers
             switch (column)
             {
                 case "id":
-                    parameters.AddWithValue($"{column}_{columnIndex}", null);
+                    parameters.AddWithValue($"{column}_{columnIndex}", entity.Key);
                     break;
                 case "name":
                     parameters.AddWithValue($"{column}_{columnIndex}", entity.Name);
@@ -90,6 +86,9 @@ namespace MAVAppBackend.EntityMappers
                     break;
                 case "expiry_date":
                     parameters.AddWithValue($"{column}_{columnIndex}", entity.ExpiryDate);
+                    break;
+                case "enc_polyline":    
+                    parameters.AddPolylineWithValue($"{column}_{columnIndex}", entity.Polyline);
                     break;
             }
         }

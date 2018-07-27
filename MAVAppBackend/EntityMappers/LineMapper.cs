@@ -26,7 +26,7 @@ namespace MAVAppBackend.EntityMappers
             bool lastRead;
             while (lastRead = reader.Read())
             {
-                if (entity.ID != reader.GetInt32("id")) break;
+                if (entity.Key != reader.GetInt32("id")) break;
 
                 lineBuffer.Add(reader.GetVector2OrNull("lat", "lon"));
             }
@@ -46,11 +46,11 @@ namespace MAVAppBackend.EntityMappers
             MySqlDataReader reader = getAllCmd.ExecuteReader();
             if (reader.Read())
             {
-                Line entity = createEntityInternal(reader.GetInt32(idColumn));
+                Line entity = createEntityInternal(reader.GetInt32(keyColumn));
                 while (fillEntity(entity, reader))
                 {
                     entities.Add(entity);
-                    entity = createEntityInternal(reader.GetInt32(idColumn));
+                    entity = createEntityInternal(reader.GetInt32(keyColumn));
                 }
                 entities.Add(entity);
             }

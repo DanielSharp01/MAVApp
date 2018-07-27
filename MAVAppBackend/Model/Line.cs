@@ -10,8 +10,8 @@ namespace MAVAppBackend.Model
     {
         public Polyline Polyline { private set; get; }
 
-        public Line(int id)
-            : base(id)
+        public Line(int key)
+            : base(key)
         { }
 
         public void Fill(Polyline polyline)

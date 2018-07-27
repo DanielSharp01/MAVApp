@@ -12,8 +12,8 @@ namespace MAVAppBackend.Model
         public Line Line { private set; get; }
         public double Distance { private set; get; }
 
-        public StationLine(int id)
-            : base(id)
+        public StationLine(int key)
+            : base(key)
         { }
 
         public void Fill(Station station, Line line, double distance)

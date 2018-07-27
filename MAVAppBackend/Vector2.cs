@@ -42,6 +42,11 @@ namespace MAVAppBackend
             Y = y;
         }
 
+        public Vector2 Clone()
+        {
+            return new Vector2(X, Y);
+        }
+
         public static Vector2 operator+(Vector2 a, Vector2 b)
         {
             return new Vector2(a.X + b.X, a.Y + b.Y);
@@ -127,17 +132,20 @@ namespace MAVAppBackend
             if (ReferenceEquals(obj, this)) return true;
             if (!(obj is Vector2 vec)) return false;
 
-            return vec.X == X && vec.Y == Y;
+            return Math.Abs(vec.X - X) < double.Epsilon && Math.Abs(vec.Y - Y) < double.Epsilon;
         }
 
         public static bool operator==(Vector2 a, Vector2 b)
         {
+            if (ReferenceEquals(a, b)) return true;
+            if (a is null) return false;
+
             return a.Equals(b);
         }
 
         public static bool operator!=(Vector2 a, Vector2 b)
         {
-            return !a.Equals(b);
+            return !(a == b);
         }
         public override int GetHashCode()
         {
@@ -152,23 +160,11 @@ namespace MAVAppBackend
         /// <summary>
         /// Length of the vector
         /// </summary>
-        public double Length
-        {
-            get
-            {
-                return Math.Sqrt(LengthSquared);
-            }
-        }
+        public double Length => Math.Sqrt(LengthSquared);
 
         /// <summary>
         /// Square length of the vector. Can be used as a substitute when comparing a.Length &lt; b.Length to avoid square roots.
         /// </summary>
-        public double LengthSquared
-        {
-            get
-            {
-                return X * X + Y * Y;
-            }
-        }
+        public double LengthSquared => X * X + Y * Y;
     }
 }

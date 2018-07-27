@@ -1,144 +1,108 @@
-﻿using MAVAppBackend.DataAccess;
-using MAVAppBackend.Model;
+﻿using MAVAppBackend.Model;
 using MySql.Data.MySqlClient;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data.Common;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
 {
-    public class StationMapper : EntityMapper<Station>
+    public class StationMapper : EntityMapper<int, Station>
     {
-        public StationMapper(MySqlConnection connection)
-            : base(connection, QueryBuilder.SelectEveryColumn("stations").Where("mav_found = 1"))
+        private readonly SelectQuery baseQuery;
+
+        public StationMapper(DbConnection connection)
+            : base(connection, new Dictionary<int, Station>())
         {
-            EntityCacheForName  = new ReadOnlyDictionary<string, Station>(entityCacheForName);
+            baseQuery = SqlQuery.Select().AllColumns().From("stations").Where("`mav_found` = 1");
         }
 
-        protected Dictionary<string, Station> entityCacheForName = new Dictionary<string, Station>();
-
-        public IReadOnlyDictionary<string, Station> EntityCacheForName { get; private set; }
-
-        protected override Station createEntity(int id)
+        protected override Station CreateEntity(int key)
         {
-            return new Station(id);
+            return new Station(key);
         }
 
-        private Station createEntity(string normName)
+        private DbCommand selectByKeyCmd;
+        protected override DbDataReader SelectByKey(int key)
         {
-            Station entity;
-            if (entityCacheForName.ContainsKey(normName))
-            {
-                entity = entityCacheForName[normName];
-            }
-            else
-            {
-                entity = new Station(normName);
-                entityCacheForName.Add(normName, entity);
-            }
-            return entity;
+            selectByKeyCmd = selectByKeyCmd ?? baseQuery.Clone().Where("`id` = @id").ToPreparedCommand(connection);
+            selectByKeyCmd.Parameters.Clear();
+            DbParameters.AddParameter(selectByKeyCmd.Parameters, "@id", key);
+            return selectByKeyCmd.ExecuteReader();
         }
 
-        protected override bool fillEntity(Station entity, MySqlDataReader reader)
+        protected override DbDataReader SelectByKeys(IEnumerable<int> keys)
         {
-            if (entity.ID != -1)
-            {
-                string name = reader.GetStringOrNull("name");
-                string normName = reader.GetStringOrNull("norm_name");
-                Vector2 gpsCoord = reader.GetVector2OrNull("lat", "lon");
-                entity.Fill(name, normName, gpsCoord);
-            }
-            else
-            {
-                int id = reader.GetInt32("id");
-                string name = reader.GetStringOrNull("name");
-                Vector2 gpsCoord = reader.GetVector2OrNull("lat", "lon");
-                entity.Fill(id, name, gpsCoord);
-            }
+            var keyArray = keys as int[] ?? keys.ToArray();
 
-            return reader.Read();
+            DbCommand cmd = baseQuery.Clone().WhereIn("id", keyArray.Count()).ToPreparedCommand(connection);
+            cmd.Parameters.Clear();
+            DbParameters.AddParameters(cmd.Parameters, "@id", keyArray);
+            return cmd.ExecuteReader();
         }
 
-        protected BatchSelectStrategy<string, Station> sbatchStrategyNormName = null;
-
-        public void BeginSelectNormName(BatchSelectStrategy<string, Station> sbatchStrategy)
+        private DbCommand selectAllCmd;
+        protected override DbDataReader SelectAll()
         {
-            if (sbatchStrategyNormName != null) throw new InvalidOperationException("Can't begin a new batch before ending the active one.");
-            sbatchStrategyNormName = sbatchStrategy ?? throw new ArgumentNullException("sbatchStrategy");
+            selectAllCmd = selectAllCmd ?? baseQuery.ToCommand(connection);
+            return selectAllCmd.ExecuteReader();
         }
 
-        public Station GetByName(string name, bool forceUpdate = true)
+        protected override int GetKey(DbDataReader reader)
         {
-            string normName = NormalizeName(name);
-            bool hasCache = entityCacheForName.ContainsKey(normName);
-            Station entity = createEntity(normName);
-            if (!hasCache || forceUpdate) FillByName(entity);
-            return entity;
+            return reader.GetInt32("id");
+        }
+    }
+
+    public class StationNNKeyMapper : EntityMapper<string, StationNNKey>
+    {
+        private readonly SelectQuery baseQuery;
+
+        public StationNNKeyMapper(DbConnection connection)
+            : base(connection, new Dictionary<string, StationNNKey>())
+        {
+            baseQuery = SqlQuery.Select().AllColumns().From("stations").Where("`mav_found` = 1");
         }
 
-        public void FillByName(Station entity)
+        protected override StationNNKey CreateEntity(string key)
         {
-            if (sbatchStrategyNormName == null)
-                fillByNormNameSingle(entity);
-            else
-                sbatchStrategyNormName.AddEntity(entity.NormalizedName, entity);
+            return new StationNNKey(key);
         }
 
-        public void EndSelectNormName()
+        private DbCommand selectByKeyCmd;
+        protected override DbDataReader SelectByKey(string key)
         {
-            if (sbatchStrategyNormName == null) throw new InvalidOperationException("Can't end a batch before starting it.");
-            sbatchStrategyNormName.BatchFill(connection, baseSelectQuery, "norm_name", fillEntity);
-            sbatchStrategyNormName = null;
+            selectByKeyCmd = selectByKeyCmd ?? baseQuery.Clone().Where("`norm_name` = @norm_name").ToPreparedCommand(connection);
+            selectByKeyCmd.Parameters.Clear();
+            DbParameters.AddParameter(selectByKeyCmd.Parameters, "@norm_name", key);
+            return selectByKeyCmd.ExecuteReader();
         }
 
-        MySqlCommand getByNormNameCmd = null;
-        protected virtual void fillByNormNameSingle(Station entity)
+        protected override DbDataReader SelectByKeys(IEnumerable<string> keys)
         {
-            if (getByNormNameCmd == null)
-                getByNormNameCmd = baseSelectQuery.Where($"norm_name = @norm_name").ToPreparedCommand(connection);
+            var keyArray = keys as string[] ?? keys.ToArray();
 
-            getByNormNameCmd.Parameters.Clear();
-            getByNormNameCmd.Parameters.AddWithValue("@norm_name", entity.NormalizedName);
-            MySqlDataReader reader = getByNormNameCmd.ExecuteReader();
-            if (reader.Read())
-            {
-                fillEntity(entity, reader);
-            }
-
-            reader.Close();
+            DbCommand cmd = baseQuery.Clone().WhereIn("norm_name", keyArray.Count()).ToPreparedCommand(connection);
+            cmd.Parameters.Clear();
+            DbParameters.AddParameters(cmd.Parameters, "@norm_name", keyArray);
+            return cmd.ExecuteReader();
         }
 
-        /// <summary>
-        /// Normalizes a station name for comparison (removes Hungarian accents, replaces hyphens with spaces, removes redundant information such as station)
-        /// </summary>
-        /// <param name="stationName">Name to normalize</param>
-        /// <returns>Normalized version of the same name</returns>
-        public static string NormalizeName(string stationName)
+        private DbCommand selectAllCmd;
+        protected override DbDataReader SelectAll()
         {
-            stationName = stationName.ToLower();
+            selectAllCmd = selectAllCmd ?? baseQuery.ToPreparedCommand(connection);
+            return selectAllCmd.ExecuteReader();
+        }
 
-            stationName = stationName.Replace('á', 'a');
-            stationName = stationName.Replace('é', 'e');
-            stationName = stationName.Replace('í', 'i');
-            stationName = stationName.Replace('ó', 'o');
-            stationName = stationName.Replace('ö', 'o');
-            stationName = stationName.Replace('ő', 'o');
-            stationName = stationName.Replace('ú', 'u');
-            stationName = stationName.Replace('ü', 'u');
-            stationName = stationName.Replace('ű', 'u');
-
-            stationName = stationName.Replace(" railway station crossing", "");
-            stationName = stationName.Replace(" railway station", "");
-            stationName = stationName.Replace(" train station", "");
-            stationName = stationName.Replace(" station", "");
-            stationName = stationName.Replace(" vonatallomas", "");
-            stationName = stationName.Replace(" vasutallomas", "");
-            stationName = stationName.Replace(" mav pu", "");
-            stationName = stationName.Replace("-", " ");
-
-            return stationName;
+        protected override string GetKey(DbDataReader reader)
+        {
+            return reader.GetString("norm_name");
         }
     }
 }

@@ -19,7 +19,7 @@ namespace MAVAppBackend
     public class TRAINSData
     {
         /// <summary>
-        /// Unique ID used by MÁV
+        /// Unique Key used by MÁV
         /// </summary>
         public string ElviraID
         {
@@ -122,7 +122,7 @@ namespace MAVAppBackend
         /// <summary>
         /// Request a train from MÁV
         /// </summary>
-        /// <param name="elviraID">Unique ID per train class</param>
+        /// <param name="elviraID">Unique Key per train class</param>
         /// <returns>JSON object of the train</returns>
         public static JObject RequestTrain(int trainId)
         {
@@ -147,7 +147,7 @@ namespace MAVAppBackend
         /// <summary>
         /// Request a train from MÁV
         /// </summary>
-        /// <param name="elviraID">Unique ID</param>
+        /// <param name="elviraID">Unique Key</param>
         /// <returns>JSON object of the train</returns>
         public static JObject RequestTrain(string elviraID)
         {

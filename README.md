@@ -10,7 +10,7 @@ Is contained in the `tables.sql` and `data.sql` file in the root of the reposito
 
 - [x] Rewrite projection and GPS math
 - [x] Data Access Layer
-- [ ] MAVAPIParser - parsing tabular HTML data
+- [x] MAVAPIParser - parsing tabular HTML data
 - [ ] Line mapping trains to the Station Graph
 - [ ] Selective API update (update whatever we can from any MÁV API)
 - [ ] RequestScheduler (to avoid requesting too much at the same time)

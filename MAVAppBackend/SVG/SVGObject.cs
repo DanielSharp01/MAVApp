@@ -12,7 +12,7 @@ namespace MAVAppBackend.SVG
         /// </summary>
         public string StrokeColor = "none";
         /// <summary>
-        /// Fill color of the SVGObject
+        /// InternalFill color of the SVGObject
         /// </summary>
         public string FillColor = "none";
         /// <summary>

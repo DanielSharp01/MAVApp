@@ -10,17 +10,33 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="APIController.cs" />
+    <Compile Remove="APIHandlers\MAVTable.cs" />
+    <Compile Remove="APIHandlers\TRAINHandler.cs" />
     <Compile Remove="Controllers\CloseStationController.cs" />
     <Compile Remove="Controllers\RouteTrainsController.cs" />
     <Compile Remove="Controllers\StationTrainsController.cs" />
+    <Compile Remove="Controllers\TestController.cs" />
     <Compile Remove="Controllers\TrainController.cs" />
     <Compile Remove="Controllers\TrainsController.cs" />
     <Compile Remove="Database.cs" />
+    <Compile Remove="EntityMappers\LineMapper.cs" />
+    <Compile Remove="EntityMappers\StationLineMapper.cs" />
+    <Compile Remove="EntityMappers\TrainMapper.cs" />
+    <Compile Remove="LineTracer.cs" />
+    <Compile Remove="MAVAPI.cs" />
+    <Compile Remove="Model\Line.cs" />
+    <Compile Remove="Model\StationLine.cs" />
+    <Compile Remove="Model\Train.cs" />
+    <Compile Remove="Model\TrainStation.cs" />
+    <Compile Remove="Startup.cs" />
     <Compile Remove="StationInfo.cs" />
     <Compile Remove="Train.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="APIHandlers\" />
+    <Folder Include="Controllers\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
@@ -29,6 +45,10 @@
     <PackageReference Include="Microsoft.AspNetCore.All" Version="2.0.6" />
     <PackageReference Include="MySql.Data" Version="8.0.11" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SharpEntities\SharpEntities.csproj" />
   </ItemGroup>
 
 </Project>

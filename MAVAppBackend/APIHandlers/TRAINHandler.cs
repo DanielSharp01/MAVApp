@@ -13,12 +13,14 @@ namespace MAVAppBackend.APIHandlers
     public class TRAINHandler
     {
         private MAVTable table;
+        public Polyline polyline; // TODO: depublicize
 
         public TRAINHandler(JObject apiResponse)
         {
             HtmlDocument html = new HtmlDocument();
             html.LoadHtml(WebUtility.HtmlDecode((string)apiResponse["d"]["result"]["html"]));
-            table = new MAVTable(html.DocumentNode.Descendants("table").Where(tb => tb.HasClass("vt")).FirstOrDefault());
+            table = new MAVTable(html.DocumentNode.Descendants("table").FirstOrDefault(tb => tb.HasClass("vt")));
+            polyline = new Polyline(Polyline.DecodePoints(apiResponse["d"]["result"]["line"][0]["points"].ToString(), 1E5));
         }
 
         public Train GetTrainFromHeader()
@@ -51,7 +53,9 @@ namespace MAVAppBackend.APIHandlers
                 if (!header.MoveNext()) throw new MAVParseException("No train relations.");
             }
 
-            if (header.Current.Name != "font" && !header.MoveNext()) throw new MAVParseException("No train relations.");
+            bool next = true;
+            while (header.Current.Name != "font" && (next = header.MoveNext())) ;
+            if (!next) throw new MAVParseException("No train relations.");
 
             string relation = header.Current.InnerText.Substring(1, header.Current.InnerText.IndexOf(",") - 1);
             relation.Split(" - ");
@@ -76,15 +80,18 @@ namespace MAVAppBackend.APIHandlers
 
             if (from == null || to == null) throw new MAVParseException("Train relation is not in the correct format.");
 
-            Train train = Database.Instance.TrainMapper.GetByID(number);
+            Train train = Database.Instance.TrainMapper.GetByKey(number);
             train.APIFill(name, from, to, type);
+            Database.Instance.TrainMapper.Update(train);
             return train;
         }
 
-        public List<(string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? actDeparture, TimeSpan? schedArrival, TimeSpan? actArrival, string platform)> MAVTableTest()
+        public List<(string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? schedArrival, string platform)> Test()
         {
-            List<(string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? actDeparture, TimeSpan? schedArrival, TimeSpan? actArrival, string platform)> ret
-                = new List<(string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? actDeparture, TimeSpan? schedArrival, TimeSpan? actArrival, string platform)>();
+            List<(string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? schedArrival, string platform)> ret
+                = new List<(string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? schedArrival, string platform)>();
+
+            Database.Instance.StationMapper.BeginSelectNormName(new WhereInStrategy<string, Station>());
             foreach (MAVTableRow row in table.GetRows())
             {
                 string stationName = row.GetCellString(1);
@@ -96,10 +103,23 @@ namespace MAVAppBackend.APIHandlers
                 if (platform != null) platform = platform.Trim();
                 if (platform == "") platform = null;
 
-                ret.Add((stationName, station, schedDeparture, actDeparture, schedArrival, actArrival, platform));
+                ret.Add((stationName, station, schedDeparture, schedArrival, platform));
             }
+            Database.Instance.StationMapper.EndSelectNormName();
+
+            Database.Instance.StationMapper.BeginUpdate();
+            foreach ((string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? schedArrival, string platform) in ret)
+            {
+                if (!station.Filled) Database.Instance.StationMapper.Update(station);
+            }
+            Database.Instance.StationMapper.EndUpdate();
 
             return ret;
+        }
+
+        public void LineMapping()
+        {
+            
         }
 
         private string figureOutTypeUl(HtmlNode ul)

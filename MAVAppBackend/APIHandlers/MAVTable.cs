@@ -43,7 +43,7 @@ namespace MAVAppBackend.APIHandlers
             Train train = null;
             if (int.TryParse(link.InnerText, out int trainNumber))
             {
-                train = Database.Instance.TrainMapper.GetByID(trainNumber);
+                train = Database.Instance.TrainMapper.GetByKey(trainNumber);
             }
             else throw new MAVParseException("Train link does not contain a number.");
 
@@ -102,7 +102,7 @@ namespace MAVAppBackend.APIHandlers
             Train train = null;
             if (int.TryParse(link.InnerText, out int trainNumber))
             {
-                train = Database.Instance.TrainMapper.GetByID(trainNumber);
+                train = Database.Instance.TrainMapper.GetByKey(trainNumber);
             }
             else throw new MAVParseException("Train link does not contain a number.");
 

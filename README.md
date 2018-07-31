@@ -8,18 +8,18 @@ Is contained in the `tables.sql` and `data.sql` file in the root of the reposito
 
 ## Tasks
 
-- [] Data Access Layer
+- [ ] Data Access Layer
   - [x] Stations
   - [x] Trains
-  - [] TrainInstances
-  - [] TrainStations
-  - [] TrainInstanceStations
-  - [] Trace
+  - [ ] TrainInstances
+  - [ ] TrainStations
+  - [ ] TrainInstanceStations
+  - [ ] Trace
 
-- [] API Handlers
-  - [] TRAIN
-  - [] ROUTE
-  - [] STATION
-  - [] TRAINS
+- [ ] API Handlers
+  - [ ] TRAIN
+  - [ ] ROUTE
+  - [ ] STATION
+  - [ ] TRAINS
 
-- [] API Endpoints (subtasks tbd)
+- [ ] API Endpoints (subtasks tbd)

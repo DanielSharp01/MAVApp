@@ -8,10 +8,18 @@ Is contained in the `tables.sql` and `data.sql` file in the root of the reposito
 
 ## Tasks
 
-- [x] Rewrite projection and GPS math
-- [x] Data Access Layer
-- [x] MAVAPIParser - parsing tabular HTML data
-- [ ] Line mapping trains to the Station Graph
-- [ ] Selective API update (update whatever we can from any MÁV API)
-- [ ] RequestScheduler (to avoid requesting too much at the same time)
-- [ ] Discovery algorithm (mostly experimentation)
+- [] Data Access Layer
+  - [x] Stations
+  - [x] Trains
+  - [] TrainInstances
+  - [] TrainStations
+  - [] TrainInstanceStations
+  - [] Trace
+
+- [] API Handlers
+  - [] TRAIN
+  - [] ROUTE
+  - [] STATION
+  - [] TRAINS
+
+- [] API Endpoints (subtasks tbd)

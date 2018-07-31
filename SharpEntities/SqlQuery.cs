@@ -273,6 +273,7 @@ namespace SharpEntities
         private readonly List<string> columns = new List<string>();
         private int valueCount = 1;
         private readonly List<string> setColumns = new List<string>();
+        private bool ignoreUpdate = false;
 
         public InsertQuery Clone()
         {
@@ -281,6 +282,7 @@ namespace SharpEntities
             cloneQuery.columns.AddRange(columns);
             cloneQuery.valueCount = valueCount;
             cloneQuery.setColumns.AddRange(setColumns);
+            cloneQuery.ignoreUpdate = ignoreUpdate;
 
             return cloneQuery;
         }
@@ -318,10 +320,9 @@ namespace SharpEntities
             return this;
         }
 
-        public InsertQuery OnDuplicateKeyIgnore(string key)
+        public InsertQuery IgnoreUpdate()
         {
-            setColumns.Clear();
-            setColumns.Add(key);
+            ignoreUpdate = true;
 
             return this;
         }
@@ -368,7 +369,8 @@ namespace SharpEntities
                 bool first = true;
                 foreach (string column in setColumns)
                 {
-                    builder.Append($"{(first ? "" : ", ")}{EscapeSqlIdentifier(column)} = VALUES({EscapeSqlIdentifier(column)})");
+                    builder.Append($"{(first ? "" : ", ")}{EscapeSqlIdentifier(column)} = ");
+                    builder.Append(ignoreUpdate ? $"{EscapeSqlIdentifier(column)}" : $"VALUES({EscapeSqlIdentifier(column)})");
                     first = false;
                 }
             }
@@ -456,6 +458,23 @@ namespace SharpEntities
 
             return this;
         }
+
+        public UpdateQuery WhereIn(string column, int optionCount)
+        {
+            if (whereConditions.Count > 0)
+                whereConditions.Add("AND");
+
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < optionCount; i++)
+            {
+                builder.Append($"{(i == 0 ? "" : ", ")}@{column}_{i}");
+            }
+            whereConditions.Add($"{EscapeSqlIdentifier(column)} IN ({builder.ToString()})");
+            activeClause = Clause.Where;
+
+            return this;
+        }
+
         public UpdateQuery And()
         {
             if (activeClause == Clause.Where) whereConditions.Add("AND");
@@ -511,7 +530,7 @@ namespace SharpEntities
             return cloneQuery;
         }
 
-        public DeleteQuery Table(string table)
+        public DeleteQuery From(string table)
         {
             this.table = EscapeSqlIdentifier(table);
             activeClause = Clause.Table;
@@ -529,6 +548,23 @@ namespace SharpEntities
 
             return this;
         }
+
+        public DeleteQuery WhereIn(string column, int optionCount)
+        {
+            if (whereConditions.Count > 0)
+                whereConditions.Add("AND");
+
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < optionCount; i++)
+            {
+                builder.Append($"{(i == 0 ? "" : ", ")}@{column}_{i}");
+            }
+            whereConditions.Add($"{EscapeSqlIdentifier(column)} IN ({builder.ToString()})");
+            activeClause = Clause.Where;
+
+            return this;
+        }
+
         public DeleteQuery And()
         {
             if (activeClause == Clause.Where) whereConditions.Add("AND");

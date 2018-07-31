@@ -27,8 +27,8 @@ namespace MAVAppBackend.DataAccess
         private StationNNKeyMapper stationNNKeyMapper;
         public StationNNKeyMapper StationNNKeyMapper => stationNNKeyMapper ?? (stationNNKeyMapper = new StationNNKeyMapper(connection));
 
-        private TestEntityMapper testMapper;
-        public TestEntityMapper TestMapper => testMapper ?? (testMapper = new TestEntityMapper(connection));
+        private TrainEntityMapper trainMapper;
+        public TrainEntityMapper TrainMapper => trainMapper ?? (trainMapper = new TrainEntityMapper(connection));
 
         public void Dispose()
         {

@@ -27,7 +27,6 @@
     <Compile Remove="MAVAPI.cs" />
     <Compile Remove="Model\Line.cs" />
     <Compile Remove="Model\StationLine.cs" />
-    <Compile Remove="Model\Train.cs" />
     <Compile Remove="Model\TrainStation.cs" />
     <Compile Remove="Startup.cs" />
     <Compile Remove="StationInfo.cs" />

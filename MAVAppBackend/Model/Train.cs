@@ -1,45 +1,81 @@
-﻿using MAVAppBackend.DataAccess;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
+using MAVAppBackend.DataAccess;
+using SharpEntities;
 
 namespace MAVAppBackend.Model
 {
-    public class Train : Entity
+    public class Train : UpdatableEntity<int>
     {
-        public string Name { private set; get; }
-        public string From { private set; get; }
-        public string To { private set; get; }
-        public string Type { private set; get; }
-        public Polyline Polyline { private set; get; }
-        public DateTime? ExpiryDate { private set; get; }
+        private string name;
+        public string Name
+        {
+            get => name;
+            set
+            {
+                name = value;
+                OnChange();
+            }
+        }
 
-        public Train(int key)
-            : base(key)
+        private string type;
+        public string Type
+        {
+            get => type;
+            set
+            {
+                type = value;
+                OnChange();
+            }
+        }
+
+        private Polyline polyline;
+        public Polyline Polyline
+        {
+            get => polyline;
+            set
+            {
+                polyline = value;
+                OnChange();
+            }
+        }
+
+        private DateTime? expiryDate;
+        public DateTime? ExpiryDate
+        {
+            get => expiryDate;
+            set
+            {
+                expiryDate = value;
+                OnChange();
+            }
+        }
+
+        public Train(int id)
+            : base(id)
         { }
 
-        public void Fill(string name, string from, string to, string type, DateTime? expiryDate, Polyline Polyline)
+        public override void Fill(UpdatableEntity<int> other)
         {
-            Name = name;
-            From = from;
-            To = to;
-            Type = type;
-            ExpiryDate = expiryDate;
-            Filled = true;
+            if (other is Train train)
+            {
+                Name = train.Name;
+                Type = train.Type;
+                Polyline = train.Polyline;
+                ExpiryDate = train.ExpiryDate;
+                Filled = train.Filled;
+            }
         }
 
-        public void APIFill(string name, string from, string to, string type)
+        protected override void InternalFill(DbDataReader reader)
         {
-            Name = name;
-            From = from;
-            To = to;
-            Type = type;
-        }
-
-        public void APIFill(DateTime expiryDate)
-        {
-            ExpiryDate = expiryDate;
+            Name = reader.GetStringOrNull("name");
+            Type = reader.GetStringOrNull("type");
+            Polyline = reader.GetPolylineOrNull("polyline");
+            ExpiryDate = reader.GetDateTimeOrNull("expiry_date");
         }
     }
 }

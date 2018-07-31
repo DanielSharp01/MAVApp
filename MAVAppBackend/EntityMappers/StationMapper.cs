@@ -8,18 +8,19 @@ using System.Data.Common;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
+using MAVAppBackend.DataAccess;
 using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
 {
-    public class StationMapper : EntityMapper<int, Station>
+    public class StationMapper : UpdatableEntityMapper<int, Station>
     {
         private readonly SelectQuery baseQuery;
 
         public StationMapper(DbConnection connection)
             : base(connection, new Dictionary<int, Station>())
         {
-            baseQuery = SqlQuery.Select().AllColumns().From("stations").Where("`mav_found` = 1");
+            baseQuery = SqlQuery.Select().AllColumns().From("stations");
         }
 
         protected override Station CreateEntity(int key)
@@ -57,16 +58,35 @@ namespace MAVAppBackend.EntityMappers
         {
             return reader.GetInt32("id");
         }
+
+        protected override void InsertEntities(IList<Station> entities)
+        {
+            if (entities.Count == 0) return;
+
+            DbCommand command = SqlQuery.Insert().Columns(new[] { "id", "name", "norm_name", "lat", "lon" }).Into("stations").Values(entities.Count())
+                .OnDuplicateKey(new[] { "id" }).IgnoreUpdate().ToPreparedCommand(connection);
+
+            DbParameters.AddParameters(command.Parameters, "@id", entities.Select(e => e.Key == -1 ? null : (object)e.Key));
+            DbParameters.AddParameters(command.Parameters, "@name", entities.Select(e => e.Name));
+            DbParameters.AddParameters(command.Parameters, "@norm_name", entities.Select(e => e.NormalizedName));
+            DbParameterExtensions.AddVector2Parameters(command.Parameters, "@lat", "@lon", entities.Select(e => e.GPSCoord));
+            command.ExecuteNonQuery();
+        }
+
+        protected override void DeleteEntities(IList<int> keys)
+        {
+            throw new NotImplementedException();
+        }
     }
 
-    public class StationNNKeyMapper : EntityMapper<string, StationNNKey>
+    public class StationNNKeyMapper : UpdatableEntityMapper<string, StationNNKey>
     {
         private readonly SelectQuery baseQuery;
 
         public StationNNKeyMapper(DbConnection connection)
             : base(connection, new Dictionary<string, StationNNKey>())
         {
-            baseQuery = SqlQuery.Select().AllColumns().From("stations").Where("`mav_found` = 1");
+            baseQuery = SqlQuery.Select().AllColumns().From("stations");
         }
 
         protected override StationNNKey CreateEntity(string key)
@@ -88,7 +108,6 @@ namespace MAVAppBackend.EntityMappers
             var keyArray = keys as string[] ?? keys.ToArray();
 
             DbCommand cmd = baseQuery.Clone().WhereIn("norm_name", keyArray.Count()).ToPreparedCommand(connection);
-            cmd.Parameters.Clear();
             DbParameters.AddParameters(cmd.Parameters, "@norm_name", keyArray);
             return cmd.ExecuteReader();
         }
@@ -103,6 +122,25 @@ namespace MAVAppBackend.EntityMappers
         protected override string GetKey(DbDataReader reader)
         {
             return reader.GetString("norm_name");
+        }
+
+        protected override void InsertEntities(IList<StationNNKey> entities)
+        {
+            if (entities.Count == 0) return;
+
+            DbCommand command = SqlQuery.Insert().Columns(new[] { "id", "name", "norm_name", "lat", "lon" }).Into("stations").Values(entities.Count)
+                .OnDuplicateKey(new[] { "norm_name" }).IgnoreUpdate().ToPreparedCommand(connection);
+
+            DbParameters.AddParameters(command.Parameters, "@norm_name", entities.Select(e => e.Key));
+            DbParameters.AddParameters(command.Parameters, "@id", entities.Select(e => e.ID == -1 ? null : (object)e.ID));
+            DbParameters.AddParameters(command.Parameters, "@name", entities.Select(e => e.Name));
+            DbParameterExtensions.AddVector2Parameters(command.Parameters, "@lat", "@lon", entities.Select(e => e.GPSCoord));
+            command.ExecuteNonQuery();
+        }
+
+        protected override void DeleteEntities(IList<string> keys)
+        {
+            throw new NotImplementedException();
         }
     }
 }

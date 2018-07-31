@@ -62,12 +62,10 @@ namespace MAVAppBackend.EntityMappers
             return selectByKeyCmd.ExecuteReader();
         }
 
-        protected override DbDataReader SelectByKeys(IEnumerable<int> keys)
+        protected override DbDataReader SelectByKeys(IList<int> keys)
         {
-            var keyArray = keys as int[] ?? keys.ToArray();
-
-            DbCommand cmd = baseQuery.Clone().WhereIn("id", keyArray.Count()).ToPreparedCommand(connection);
-            DbParameters.AddParameters(cmd.Parameters, "@id", keyArray);
+            DbCommand cmd = baseQuery.Clone().WhereIn("id", keys.Count).ToPreparedCommand(connection);
+            DbParameters.AddParameters(cmd.Parameters, "@id", keys);
             return cmd.ExecuteReader();
         }
 

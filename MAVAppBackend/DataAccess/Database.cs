@@ -24,9 +24,6 @@ namespace MAVAppBackend.DataAccess
         private StationMapper stationMapper;
         public StationMapper StationMapper => stationMapper ?? (stationMapper = new StationMapper(connection));
 
-        private StationNNKeyMapper stationNNKeyMapper;
-        public StationNNKeyMapper StationNNKeyMapper => stationNNKeyMapper ?? (stationNNKeyMapper = new StationNNKeyMapper(connection));
-
         private TrainEntityMapper trainMapper;
         public TrainEntityMapper TrainMapper => trainMapper ?? (trainMapper = new TrainEntityMapper(connection));
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
+using System.Linq;
 
 namespace SharpEntities
 {
@@ -44,7 +45,7 @@ namespace SharpEntities
                 return;
             }
 
-            DbDataReader reader = (batchSelectStrategy == BatchSelectStrategy.MultiKey) ? SelectByKeys(selectBatch.Keys) : SelectAll();
+            DbDataReader reader = (batchSelectStrategy == BatchSelectStrategy.MultiKey) ? SelectByKeys(selectBatch.Keys.ToList()) : SelectAll();
 
             if (reader.Read())
             {
@@ -55,7 +56,7 @@ namespace SharpEntities
 
                     foreach (E entity in selectBatch[key])
                     {
-                        entity.Fill(reader);
+                        FillEntity(entity, reader);
                     }
                 } while (AdvanceReader(reader));
             }
@@ -105,7 +106,7 @@ namespace SharpEntities
             DbDataReader reader = SelectByKey(entity.Key);
             if (reader.Read())
             {
-                entity.Fill(reader);
+                FillEntity(entity, reader);
             }
             reader.Close();
         }
@@ -120,7 +121,7 @@ namespace SharpEntities
                 do 
                 {
                     E entity = CreateEntityInternal(GetKey(reader));
-                    entity.Fill(reader);
+                    FillEntity(entity, reader);
                     entities.Add(entity);
                 } while (AdvanceReader(reader));
             }
@@ -130,11 +131,16 @@ namespace SharpEntities
             return entities;
         }
 
+        protected virtual void FillEntity(E entity, DbDataReader reader)
+        {
+            entity.Fill(reader);
+        }
+
         protected abstract E CreateEntity(K key);
 
         protected abstract DbDataReader SelectByKey(K key);
 
-        protected abstract DbDataReader SelectByKeys(IEnumerable<K> keys);
+        protected abstract DbDataReader SelectByKeys(IList<K> keys);
 
         protected abstract DbDataReader SelectAll();
 

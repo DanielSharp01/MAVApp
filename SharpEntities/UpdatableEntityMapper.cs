@@ -17,32 +17,32 @@ namespace SharpEntities
         private List<E> insertables = null;
         private List<K> deletables = null;
 
-        public void BeginUpdate()
+        public virtual void BeginUpdate()
         {
             if (insertables != null) return;
             insertables = new List<E>();
         }
 
-        public void EndUpdate()
+        public virtual void EndUpdate()
         {
             if (insertables == null) return;
             InsertEntities(insertables);
         }
 
-        public void BeginDelete()
+        public virtual void BeginDelete()
         {
             if (deletables != null) return;
             deletables = new List<K>();
         }
 
 
-        public void EndDelete()
+        public virtual void EndDelete()
         {
             if (deletables == null) return;
             DeleteEntities(deletables);
         }
 
-        public void UpdateSaveCache()
+        public virtual void UpdateSaveCache()
         {
             if (entityCache == null) throw new InvalidOperationException("Cache is not set up and thus cannot be saved.");
 
@@ -53,7 +53,7 @@ namespace SharpEntities
             }
         }
 
-        public void Update(E entity)
+        public virtual void Update(E entity)
         {
             if (insertables != null)
                 insertables.Add(entity);
@@ -63,7 +63,7 @@ namespace SharpEntities
             entity.OnSaved();
         }
 
-        public void Delete(E entity)
+        public virtual void Delete(E entity)
         {
             if (deletables != null)
                 deletables.Add(entity.Key);
@@ -71,7 +71,7 @@ namespace SharpEntities
                 DeleteEntities(new[] { entity.Key });
         }
 
-        public void Delete(K key)
+        public virtual void Delete(K key)
         {
             if (deletables != null)
                 deletables.Add(key);

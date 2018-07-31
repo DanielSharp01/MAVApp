@@ -10,7 +10,9 @@ namespace MAVAppBackend
         {
             using (Database.Instance)
             {
-                Console.WriteLine(((Station)Database.Instance.StationNNKeyMapper.GetByKey("TEST STATION")).Key);
+                Database.Instance.StationMapper.BeginUpdate();
+                Database.Instance.StationMapper.Update(new Station(1) {Name = "test", NormalizedName = "test"});
+                Database.Instance.StationMapper.EndUpdate();
             }
 
             Console.ReadLine();

@@ -31,6 +31,9 @@ namespace MAVAppBackend.DataAccess
 
         private TrainInstanceStationMapper trainInstanceStationMapper;
         public TrainInstanceStationMapper TrainInstanceStationMapper => trainInstanceStationMapper ?? (trainInstanceStationMapper = new TrainInstanceStationMapper(connection));
+
+        private TraceMapper traceMapper;
+        public TraceMapper TraceMapper => traceMapper ?? (traceMapper = new TraceMapper(connection));
         #endregion
 
         public void Dispose()

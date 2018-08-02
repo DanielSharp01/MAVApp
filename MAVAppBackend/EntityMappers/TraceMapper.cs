@@ -9,11 +9,11 @@ using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
 {
-    public class TraceEntityMapper : UpdatableEntityMapper<int, Trace>
+    public class TraceMapper : UpdatableEntityMapper<int, Trace>
     {
         private readonly SelectQuery baseQuery;
 
-        public TraceEntityMapper(DatabaseConnection connection)
+        public TraceMapper(DatabaseConnection connection)
             : base(connection, new Dictionary<int, Trace>())
         {
             baseQuery = SqlQuery.Select().From("trace").AllColumns();

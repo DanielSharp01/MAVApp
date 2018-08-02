@@ -1,25 +1,26 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
-using MAVAppBackend.DataAccess;
+using System.Threading.Tasks;
 using MAVAppBackend.Entities;
 using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
 {
-    public class TrainMapper : UpdatableEntityMapper<int, Train>
+    public class TrainInstanceStationMapper : UpdatableEntityMapper<int, TrainInstanceStation>
     {
         private readonly SelectQuery baseQuery;
 
-        public TrainMapper(DatabaseConnection connection)
-            : base(connection, new Dictionary<int, Train>())
+        public TrainInstanceStationMapper(DatabaseConnection connection)
+            : base(connection, new Dictionary<int, TrainInstanceStation>())
         {
-            baseQuery = SqlQuery.Select().AllColumns().From("trains");
+            baseQuery = SqlQuery.Select().AllColumns().From("train_instance_stations");
         }
 
-        protected override Train CreateEntity(int key)
+        protected override TrainInstanceStation CreateEntity(int key)
         {
-            return new Train(key);
+            return new TrainInstanceStation(key);
         }
 
         protected override int GetKey(DbDataReader reader)
@@ -27,18 +28,18 @@ namespace MAVAppBackend.EntityMappers
             return reader.GetInt32("id");
         }
 
-        protected override void InsertEntities(IList<Train> entities)
+        protected override void InsertEntities(IList<TrainInstanceStation> entities)
         {
             if (entities.Count == 0) return;
 
-            DatabaseCommand command = SqlQuery.Insert().Columns(new[] {"id", "name", "type", "polyline", "expiry_date"}).Into("trains").Values(entities.Count)
-                .OnDuplicateKey(new[] {"name", "type", "polyline", "expiry_date"}).ToPreparedCommand(connection);
+            DatabaseCommand command = SqlQuery.Insert().Columns(new[] { "id", "train_instance_id", "train_station_id", "actual_arrival", "actual_departure" }).Into("train_instance_stations").Values(entities.Count)
+                .OnDuplicateKey(new[] { "train_instance_id", "train_station_id", "actual_arrival", "actual_departure" }).ToPreparedCommand(connection);
 
             command.Parameters.AddMultiple("@id", entities.Select(e => e.Key));
-            command.Parameters.AddMultiple("@name", entities.Select(e => e.Name));
-            command.Parameters.AddMultiple("@type", entities.Select(e => e.Type));
-            command.Parameters.AddMultiplePolyline("@polyline", entities.Select(e => e.Polyline));
-            command.Parameters.AddMultiple("@expiry_date", entities.Select(e => e.ExpiryDate));
+            command.Parameters.AddMultiple("@train_instance_id", entities.Select(e => e.TrainInstanceID));
+            command.Parameters.AddMultiple("@train_station_id", entities.Select(e => e.TrainStationID));
+            command.Parameters.AddMultiple("@actual_arrival", entities.Select(e => e.ActualArrival));
+            command.Parameters.AddMultiple("@actual_departure", entities.Select(e => e.ActualDeparture));
             command.ExecuteNonQuery();
         }
 
@@ -46,7 +47,7 @@ namespace MAVAppBackend.EntityMappers
         {
             if (keys.Count == 0) return;
 
-            DatabaseCommand cmd = SqlQuery.Delete().From("trains").WhereIn("id", keys.Count).ToPreparedCommand(connection);
+            DatabaseCommand cmd = SqlQuery.Delete().From("train_instance_stations").WhereIn("id", keys.Count).ToPreparedCommand(connection);
             cmd.Parameters.Add("@id", keys);
             cmd.ExecuteNonQuery();
         }

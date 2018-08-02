@@ -1,6 +1,6 @@
 ﻿using System;
 using MAVAppBackend.DataAccess;
-using MAVAppBackend.Model;
+using MAVAppBackend.Entities;
 
 namespace MAVAppBackend
 {
@@ -10,9 +10,8 @@ namespace MAVAppBackend
         {
             using (Database.Instance)
             {
-                Database.Instance.StationMapper.BeginUpdate();
-                Database.Instance.StationMapper.Update(new Station(-1) {Name = "test", NormalizedName = "test"});
-                Database.Instance.StationMapper.EndUpdate();
+                Database.Instance.TrainMapper.Update(new Train(1) {ExpiryDate = DateTime.Now.AddDays(20), Name="Z50", Polyline = null, Type="zónázó"});
+                Database.Instance.TrainInstanceMapper.Update(new TrainInstance(154879180208) {TrainID = 1 });
             }
 
             Console.ReadLine();
@@ -24,3 +23,4 @@ namespace MAVAppBackend
         //        .Build();
     }
 }
+

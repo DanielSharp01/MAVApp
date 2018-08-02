@@ -1,14 +1,9 @@
-﻿using MAVAppBackend.Model;
-using MySql.Data.MySqlClient;
-using System;
-using System.Collections.Concurrent;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Data.Common;
-using System.Data.SqlClient;
 using System.Linq;
-using System.Threading.Tasks;
 using MAVAppBackend.DataAccess;
+using MAVAppBackend.Entities;
 using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
@@ -180,9 +175,8 @@ namespace MAVAppBackend.EntityMappers
         {
             if (entities.Count == 0) return;
 
-            DatabaseCommand command = SqlQuery.Insert().Columns(new[] { "id", "name", "norm_name", "lat", "lon" }).Into("stations").Values(entities.Count).ToPreparedCommand(connection);
-
-            command.Parameters.AddMultiple("@id", entities.Select(e => e.Key == -1 ? null : (object)e.Key));
+            DatabaseCommand command = SqlQuery.Insert().Columns(new[] { "name", "norm_name", "lat", "lon" }).Into("stations").Values(entities.Count).ToPreparedCommand(connection);
+            
             command.Parameters.AddMultiple("@name", entities.Select(e => e.Name));
             command.Parameters.AddMultiple("@norm_name", entities.Select(e => e.NormalizedName));
             command.Parameters.AddMultipleVector2("@lat", "@lon", entities.Select(e => e.GPSCoord));
@@ -191,7 +185,7 @@ namespace MAVAppBackend.EntityMappers
 
         public override void Update(Station entity)
         {
-            if (entity.Key != -1) // We can't update only insert
+            if (entity.Key != -1) // Don't update only insert
                 return;
 
             base.Update(entity);

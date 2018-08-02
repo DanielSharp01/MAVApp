@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using MAVAppBackend.DataAccess;
 using SharpEntities;
 
-namespace MAVAppBackend.Model
+namespace MAVAppBackend.Entities
 {
     public class Train : UpdatableEntity<int>
     {
@@ -58,24 +58,24 @@ namespace MAVAppBackend.Model
             : base(id)
         { }
 
-        public override void Fill(UpdatableEntity<int> other)
-        {
-            if (other is Train train)
-            {
-                Name = train.Name;
-                Type = train.Type;
-                Polyline = train.Polyline;
-                ExpiryDate = train.ExpiryDate;
-                Filled = train.Filled;
-            }
-        }
-
         protected override void InternalFill(DbDataReader reader)
         {
-            Name = reader.GetStringOrNull("name");
-            Type = reader.GetStringOrNull("type");
-            Polyline = reader.GetPolylineOrNull("polyline");
-            ExpiryDate = reader.GetDateTimeOrNull("expiry_date");
+            name = reader.GetStringOrNull("name");
+            type = reader.GetStringOrNull("type");
+            polyline = reader.GetPolylineOrNull("polyline");
+            expiryDate = reader.GetDateTimeOrNull("expiry_date");
+            Filled = true;
+        }
+
+        public override void Fill(UpdatableEntity<int> other)
+        {
+            if (!(other is Train train)) return;
+
+            name = train.name;
+            type = train.type;
+            polyline = train.polyline;
+            expiryDate = train.expiryDate;
+            Filled = train.Filled;
         }
     }
 }

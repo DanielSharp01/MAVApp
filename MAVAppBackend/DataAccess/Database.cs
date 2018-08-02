@@ -22,6 +22,15 @@ namespace MAVAppBackend.DataAccess
 
         private TrainMapper trainMapper;
         public TrainMapper TrainMapper => trainMapper ?? (trainMapper = new TrainMapper(connection));
+
+        private TrainInstanceMapper trainInstanceMapper;
+        public TrainInstanceMapper TrainInstanceMapper => trainInstanceMapper ?? (trainInstanceMapper = new TrainInstanceMapper(connection));
+
+        private TrainStationMapper trainStationMapper;
+        public TrainStationMapper TraiTrainStationMappernInstanceMapper => trainStationMapper ?? (trainStationMapper = new TrainStationMapper(connection));
+
+        private TrainInstanceStationMapper trainInstanceStationMapper;
+        public TrainInstanceStationMapper TrainInstanceStationMapper => trainInstanceStationMapper ?? (trainInstanceStationMapper = new TrainInstanceStationMapper(connection));
         #endregion
 
         public void Dispose()

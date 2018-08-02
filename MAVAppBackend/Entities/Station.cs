@@ -8,54 +8,27 @@ using System.Text;
 using System.Threading.Tasks;
 using SharpEntities;
 
-namespace MAVAppBackend.Model
+namespace MAVAppBackend.Entities
 {
     /// <summary>
     /// Station with GPS information
     /// </summary>
     public class Station : UpdatableEntity<int>
     {
-        private string name;
         /// <summary>
         /// Name of the station
         /// </summary>
-        public string Name
-        {
-            get => name;
-            set
-            {
-                name = value;
-                OnChange();
-            } 
-        }
+        public string Name { get; set; }
 
-        private string normalizedName;
         /// <summary>
         /// Normalized name of the station (unique for every station)
         /// </summary>
-        public string NormalizedName
-        {
-            get => normalizedName;
-            set
-            {
-                normalizedName = value;
-                OnChange();
-            }
-        }
+        public string NormalizedName { get; set; }
 
-        private Vector2 gpsCoord;
         /// <summary>
         /// GPS Position as latitude (X) longitude (Y)
         /// </summary>
-        public Vector2 GPSCoord
-        {
-            get => gpsCoord;
-            set
-            {
-                gpsCoord = value;
-                OnChange();
-            }
-        }
+        public Vector2 GPSCoord { get; set; }
 
 
         /// <param name="key">Database Key</param>
@@ -81,14 +54,13 @@ namespace MAVAppBackend.Model
 
         public override void Fill(UpdatableEntity<int> other)
         {
-            if (other is Station station)
-            {
-                Key = other.Key;
-                Name = station.Name;
-                NormalizedName = station.NormalizedName;
-                GPSCoord = station.GPSCoord;
-                Filled = station.Filled;
-            }
+            if (!(other is Station station)) return;
+
+            Key = other.Key;
+            Name = station.Name;
+            NormalizedName = station.NormalizedName;
+            GPSCoord = station.GPSCoord;
+            Filled = station.Filled;
         }
     }
 }

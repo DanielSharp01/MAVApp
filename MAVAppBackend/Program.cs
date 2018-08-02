@@ -11,7 +11,7 @@ namespace MAVAppBackend
             using (Database.Instance)
             {
                 Database.Instance.StationMapper.BeginUpdate();
-                Database.Instance.StationMapper.Update(new Station(1) {Name = "test", NormalizedName = "test"});
+                Database.Instance.StationMapper.Update(new Station(-1) {Name = "test", NormalizedName = "test"});
                 Database.Instance.StationMapper.EndUpdate();
             }
 

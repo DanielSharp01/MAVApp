@@ -22,7 +22,6 @@
     <Compile Remove="Database.cs" />
     <Compile Remove="EntityMappers\LineMapper.cs" />
     <Compile Remove="EntityMappers\StationLineMapper.cs" />
-    <Compile Remove="EntityMappers\TrainMapper.cs" />
     <Compile Remove="LineTracer.cs" />
     <Compile Remove="MAVAPI.cs" />
     <Compile Remove="Model\Line.cs" />

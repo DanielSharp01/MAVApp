@@ -311,20 +311,5 @@ namespace SharpEntities
         {
             return reader.IsDBNull(reader.GetOrdinal(columnName)) ? @default : reader.GetInt32(columnName);
         }
-
-
-        /// <summary>
-        /// Adds an array of values in place of @arrayName_{i} parameters in an SQL query.
-        /// </summary> 
-        /// <param name="arrayName">Parameter name of the array</param>
-        /// <param name="values">Values to add</param>
-        public static void AddWithValues<T>(this SqlParameterCollection parameters, string arrayName, IEnumerable<T> values)
-        {
-            int id = 0;
-            foreach (T value in values)
-            {
-                parameters.AddWithValue(arrayName + $"_{id++}", value);
-            }
-        }
     }
 }

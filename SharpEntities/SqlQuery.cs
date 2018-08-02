@@ -47,19 +47,14 @@ namespace SharpEntities
 
         public abstract string ToSql();
 
-        public DbCommand ToCommand(DbConnection connection)
+        public DatabaseCommand ToCommand(DatabaseConnection connection)
         {
-            DbCommand command = connection.CreateCommand();
-            command.CommandText = ToSql();
-            return command;
+            return connection.CreateCommand(ToSql(), false);
         }
 
-        public DbCommand ToPreparedCommand(DbConnection connection)
+        public DatabaseCommand ToPreparedCommand(DatabaseConnection connection)
         {
-            DbCommand command = connection.CreateCommand();
-            command.CommandText = ToSql();
-            command.Prepare();
-            return command;
+            return connection.CreateCommand(ToSql(), true);
         }
     }
 

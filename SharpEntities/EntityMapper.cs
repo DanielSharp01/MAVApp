@@ -15,14 +15,14 @@ namespace SharpEntities
 
     public abstract class EntityMapper<K, E> where E : Entity<K> where K : IEquatable<K>
     {
-        protected DbConnection connection;
+        protected DatabaseConnection connection;
         
         protected Dictionary<K, List<E>> selectBatch;
         protected BatchSelectStrategy batchSelectStrategy;
 
         protected IDictionary<K, E> entityCache;
 
-        public EntityMapper(DbConnection connection, IDictionary<K, E> entityCache = null)
+        public EntityMapper(DatabaseConnection connection, IDictionary<K, E> entityCache = null)
         {
             this.connection = connection;
             this.entityCache = entityCache;

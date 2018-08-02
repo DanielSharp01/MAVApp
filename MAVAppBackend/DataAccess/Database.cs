@@ -1,31 +1,28 @@
 ﻿using MAVAppBackend.EntityMappers;
-using MySql.Data.MySqlClient;
-using SharpEntities;
 using System;
-using System.Collections.Generic;
-using MAVAppBackend.Model;
+using SharpEntities.MySql;
 
 namespace MAVAppBackend.DataAccess
 {
     public class Database : IDisposable
     {
-        private MySqlConnection connection;
+        private MySqlDatabaseConnection connection;
 
         private static Database instance;
-        public static Database Instance => instance ?? (instance = new Database(new MySqlConnection("Host=127.0.0.1;Database=mavapp;UserName=root;Password=mysql")));
+        public static Database Instance => instance ?? (instance = new Database(new MySqlDatabaseConnection("Host=127.0.0.1;Database=mavapp;UserName=root;Password=mysql")));
 
-        private Database(MySqlConnection connection)
+        private Database(MySqlDatabaseConnection connection)
         {
             this.connection = connection;
-            connection.Open();
         }
 
-        // Mappers
+        #region Mappers
         private StationMapper stationMapper;
         public StationMapper StationMapper => stationMapper ?? (stationMapper = new StationMapper(connection));
 
-        private TrainEntityMapper trainMapper;
-        public TrainEntityMapper TrainMapper => trainMapper ?? (trainMapper = new TrainEntityMapper(connection));
+        private TrainMapper trainMapper;
+        public TrainMapper TrainMapper => trainMapper ?? (trainMapper = new TrainMapper(connection));
+        #endregion
 
         public void Dispose()
         {

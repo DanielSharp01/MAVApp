@@ -1,96 +1,80 @@
-﻿using MAVAppBackend.DataAccess;
-using MAVAppBackend.Model;
-using MySql.Data.MySqlClient;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
+using MAVAppBackend.DataAccess;
+using MAVAppBackend.Model;
+using Microsoft.EntityFrameworkCore;
+using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
 {
-    public class TrainMapper : SimpleUpdatableEntityMapper<Train>
+    public class TrainMapper : UpdatableEntityMapper<int, Train>
     {
-        public TrainMapper(MySqlConnection connection)
-            : base(connection, QueryBuilder.SelectEveryColumn("trains"), "trains", new string[] { "id", "name", "from", "to", "type", "expiry_date", "enc_polyline" })
-        { }
+        private readonly SelectQuery baseQuery;
 
-        protected override Train createEntity(int id)
+        public TrainMapper(DatabaseConnection connection)
+            : base(connection, new Dictionary<int, Train>())
         {
-            return new Train(id);
+            baseQuery = SqlQuery.Select().AllColumns().From("trains");
         }
 
-        protected override bool fillEntity(Train entity, MySqlDataReader reader)
+        protected override Train CreateEntity(int key)
         {
-            string name = DataReaderExtensions.GetString(reader, "name");
-            string from = DataReaderExtensions.GetString(reader, "from");
-            string to = DataReaderExtensions.GetString(reader, "to");
-            string type = DataReaderExtensions.GetString(reader, "type");
-            DateTime? expiryDate = reader.GetDateTimeOrNull("expiry_date");
-            Polyline polyline = reader.GetPolylineOrNull("enc_polyline");
-
-            entity.Fill(name, from, to, type, expiryDate, polyline);
-
-            return reader.Read();
+            return new Train(key);
         }
 
-        protected override void updateCachedEntry(Train cachedEntity, Train updatedEntity)
+        protected override int GetKey(DbDataReader reader)
         {
-            cachedEntity.Fill(updatedEntity.Name, updatedEntity.From, updatedEntity.To, updatedEntity.Type, updatedEntity.ExpiryDate, updatedEntity.Polyline);
+            return reader.GetInt32("id");
         }
 
-        public override List<Train> GetAll()
+        protected override void InsertEntities(IList<Train> entities)
         {
-            Database.Instance.StationMapper.BeginSelect(new AllStrategy<int, Station>());
-            List<Train> trains = base.GetAll();
-            Database.Instance.StationMapper.EndSelect();
-            return trains;
+            if (entities.Count == 0) return;
+
+            DatabaseCommand command = SqlQuery.Insert().Columns(new[] {"id", "name", "type", "polyline", "expiry_date"}).Into("trains").Values(entities.Count())
+                .OnDuplicateKey(new[] {"name", "type", "polyline", "expiry_date"}).ToPreparedCommand(connection);
+
+            command.Parameters.AddMultiple("@id", entities.Select(e => e.Key));
+            command.Parameters.AddMultiple("@name", entities.Select(e => e.Name));
+            command.Parameters.AddMultiple("@type", entities.Select(e => e.Type));
+            command.Parameters.AddMultiplePolyline("@polyline", entities.Select(e => e.Polyline));
+            command.Parameters.AddMultiple("@expiry_date", entities.Select(e => e.ExpiryDate));
+            command.ExecuteNonQuery();
         }
 
-        public override void BeginSelect(BatchSelectStrategy<int, Train> sbatchStrategy)
+        protected override void DeleteEntities(IList<int> keys)
         {
-            base.BeginSelect(sbatchStrategy);
-            Database.Instance.StationMapper.BeginSelect(new WhereInStrategy<int, Station>());
+            if (keys.Count == 0) return;
+
+            DatabaseCommand cmd = SqlQuery.Delete().From("trains").WhereIn("id", keys.Count).ToPreparedCommand(connection);
+            cmd.Parameters.Add("@id", keys);
+            cmd.ExecuteNonQuery();
         }
 
-        protected override void fillByIDSingle(Train entity)
+        private DatabaseCommand selectByKeyCmd;
+        protected override DbDataReader SelectByKey(int key)
         {
-            Database.Instance.StationMapper.BeginSelect(new WhereInStrategy<int, Station>());
-            base.fillByKeySingle(entity);
-            Database.Instance.StationMapper.EndSelect();
+            selectByKeyCmd = selectByKeyCmd ?? baseQuery.Clone().Where("`id` = @id").ToPreparedCommand(connection);
+            selectByKeyCmd.Parameters.Clear();
+            selectByKeyCmd.Parameters.Add("@id", key);
+            return selectByKeyCmd.ExecuteReader();
         }
 
-        public override void EndSelect()
+        protected override DbDataReader SelectByKeys(IList<int> keys)
         {
-            base.EndSelect();
-            Database.Instance.StationMapper.EndSelect();
+            DatabaseCommand cmd = baseQuery.Clone().WhereIn("id", keys.Count).ToPreparedCommand(connection);
+            cmd.Parameters.Add("@id", keys);
+            return cmd.ExecuteReader();
         }
 
-        protected override void addUpdateColumn(Train entity, string column, int columnIndex, MySqlParameterCollection parameters)
+        private DatabaseCommand selectAllCmd;
+        protected override DbDataReader SelectAll()
         {
-            switch (column)
-            {
-                case "id":
-                    parameters.AddWithValue($"{column}_{columnIndex}", entity.Key);
-                    break;
-                case "name":
-                    parameters.AddWithValue($"{column}_{columnIndex}", entity.Name);
-                    break;
-                case "from":
-                    parameters.AddWithValue($"{column}_{columnIndex}", entity.From);
-                    break;
-                case "to":
-                    parameters.AddWithValue($"{column}_{columnIndex}", entity.To);
-                    break;
-                case "type":
-                    parameters.AddWithValue($"{column}_{columnIndex}", entity.Type);
-                    break;
-                case "expiry_date":
-                    parameters.AddWithValue($"{column}_{columnIndex}", entity.ExpiryDate);
-                    break;
-                case "enc_polyline":    
-                    parameters.AddPolylineWithValue($"{column}_{columnIndex}", entity.Polyline);
-                    break;
-            }
+            selectAllCmd = selectAllCmd ?? baseQuery.ToPreparedCommand(connection);
+            return selectAllCmd.ExecuteReader();
         }
     }
 }

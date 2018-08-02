@@ -10,7 +10,7 @@ namespace SharpEntities
 {
     public abstract class UpdatableEntityMapper<K, E> : EntityMapper<K, E> where E : UpdatableEntity<K> where K : IEquatable<K>
     {
-        public UpdatableEntityMapper(DbConnection connection, IDictionary<K, E> entityCache = null)
+        public UpdatableEntityMapper(DatabaseConnection connection, IDictionary<K, E> entityCache = null)
             : base(connection, entityCache)
         { }
 

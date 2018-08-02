@@ -21,7 +21,7 @@ namespace MAVAppBackend.EntityMappers
         protected Dictionary<string, List<Station>> normNameSelectBatch;
         protected BatchSelectStrategy normNameBatchSelectStrategy;
 
-        public StationMapper(DbConnection connection)
+        public StationMapper(DatabaseConnection connection)
             : base(connection, new Dictionary<int, Station>())
         {
             baseQuery = SqlQuery.Select().AllColumns().From("stations");
@@ -131,43 +131,43 @@ namespace MAVAppBackend.EntityMappers
             reader.Close();
         }
 
-        private DbCommand selectByKeyCmd;
+        private DatabaseCommand selectByKeyCmd;
         protected override DbDataReader SelectByKey(int key)
         {
             selectByKeyCmd = selectByKeyCmd ?? baseQuery.Clone().Where("`id` = @id").ToPreparedCommand(connection);
             selectByKeyCmd.Parameters.Clear();
-            DbParameters.AddParameter(selectByKeyCmd.Parameters, "@id", key);
+            selectByKeyCmd.Parameters.Add("@id", key);
             return selectByKeyCmd.ExecuteReader();
         }
 
         protected override DbDataReader SelectByKeys(IList<int> keys)
         {
-            DbCommand cmd = baseQuery.Clone().WhereIn("id", keys.Count).ToPreparedCommand(connection);
+            DatabaseCommand cmd = baseQuery.Clone().WhereIn("id", keys.Count).ToPreparedCommand(connection);
             cmd.Parameters.Clear();
-            DbParameters.AddParameters(cmd.Parameters, "@id", keys);
+            cmd.Parameters.Add("@id", keys);
             return cmd.ExecuteReader();
         }
 
-        private DbCommand selectAllCmd;
+        private DatabaseCommand selectAllCmd;
         protected override DbDataReader SelectAll()
         {
             selectAllCmd = selectAllCmd ?? baseQuery.ToCommand(connection);
             return selectAllCmd.ExecuteReader();
         }
 
-        private DbCommand selectByNormNameCmd;
+        private DatabaseCommand selectByNormNameCmd;
         private DbDataReader SelectByNormalizedName(string normName)
         {
             selectByNormNameCmd = selectByNormNameCmd ?? baseQuery.Clone().Where("`norm_name` = @norm_name").ToPreparedCommand(connection);
             selectByNormNameCmd.Parameters.Clear();
-            DbParameters.AddParameter(selectByNormNameCmd.Parameters, "@norm_name", normName);
+            selectByNormNameCmd.Parameters.Add("@norm_name", normName);
             return selectByNormNameCmd.ExecuteReader();
         }
 
         private DbDataReader SelectByNormalizedNames(IList<string> normNames)
         {
-            DbCommand cmd = baseQuery.Clone().WhereIn("norm_name", normNames.Count).ToPreparedCommand(connection);
-            DbParameters.AddParameters(cmd.Parameters, "@norm_name", normNames);
+            DatabaseCommand cmd = baseQuery.Clone().WhereIn("norm_name", normNames.Count).ToPreparedCommand(connection);
+            cmd.Parameters.Add("@norm_name", normNames);
             return cmd.ExecuteReader();
         }
 
@@ -180,12 +180,12 @@ namespace MAVAppBackend.EntityMappers
         {
             if (entities.Count == 0) return;
 
-            DbCommand command = SqlQuery.Insert().Columns(new[] { "id", "name", "norm_name", "lat", "lon" }).Into("stations").Values(entities.Count).ToPreparedCommand(connection);
+            DatabaseCommand command = SqlQuery.Insert().Columns(new[] { "id", "name", "norm_name", "lat", "lon" }).Into("stations").Values(entities.Count).ToPreparedCommand(connection);
 
-            DbParameters.AddParameters(command.Parameters, "@id", entities.Select(e => e.Key == -1 ? null : (object)e.Key));
-            DbParameters.AddParameters(command.Parameters, "@name", entities.Select(e => e.Name));
-            DbParameters.AddParameters(command.Parameters, "@norm_name", entities.Select(e => e.NormalizedName));
-            DbParameterExtensions.AddVector2Parameters(command.Parameters, "@lat", "@lon", entities.Select(e => e.GPSCoord));
+            command.Parameters.AddMultiple("@id", entities.Select(e => e.Key == -1 ? null : (object)e.Key));
+            command.Parameters.AddMultiple("@name", entities.Select(e => e.Name));
+            command.Parameters.AddMultiple("@norm_name", entities.Select(e => e.NormalizedName));
+            command.Parameters.AddMultipleVector2("@lat", "@lon", entities.Select(e => e.GPSCoord));
             command.ExecuteNonQuery();
         }
 

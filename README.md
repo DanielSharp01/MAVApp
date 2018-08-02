@@ -11,10 +11,11 @@ Is contained in the `tables.sql` and `data.sql` file in the root of the reposito
 - [ ] Data Access Layer
   - [x] Stations
   - [x] Trains
-  - [ ] TrainInstances
-  - [ ] TrainStations
-  - [ ] TrainInstanceStations
-  - [ ] Trace
+  - [x] TrainInstances
+  - [x] TrainStations
+  - [x] TrainInstanceStations
+  - [x] Trace
+  - [ ] Embed classes in each other
 
 - [ ] API Handlers
   - [ ] TRAIN

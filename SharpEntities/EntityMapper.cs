@@ -13,7 +13,7 @@ namespace SharpEntities
         All
     }
 
-    public abstract class EntityMapper<K, E> where E : Entity<K> where K : IEquatable<K>
+    public abstract class EntityMapper<K, E> where E : Entity<K>, new()
     {
         protected DatabaseConnection connection;
         
@@ -65,23 +65,23 @@ namespace SharpEntities
             selectBatch = null;
         }
 
-        protected virtual E CreateEntityInternal(K key)
+        protected virtual E CreateEntity(K key)
         {
             if (entityCache == null)
             {
-                return CreateEntity(key);
+                return new E() {Key = key};
             }
 
             if (entityCache.TryGetValue(key, out E entity))
                 return entity;
 
-            entityCache.Add(key, entity = CreateEntity(key));
+            entityCache.Add(key, entity = new E() { Key = key };
             return entity;
         }
 
         public virtual E GetByKey(K key, bool forceFill = true)
         {
-            E entity = CreateEntityInternal(key);
+            E entity = CreateEntity(key);
             if (entityCache == null || forceFill) FillByKey(entity);
             return entity;
         }
@@ -120,7 +120,7 @@ namespace SharpEntities
             {
                 do 
                 {
-                    E entity = CreateEntityInternal(GetKey(reader));
+                    E entity = CreateEntity(GetKey(reader));
                     FillEntity(entity, reader);
                     entities.Add(entity);
                 } while (AdvanceReader(reader));
@@ -136,8 +136,6 @@ namespace SharpEntities
             entity.Fill(reader);
         }
 
-        protected abstract E CreateEntity(K key);
-
         protected abstract DbDataReader SelectByKey(K key);
 
         protected abstract DbDataReader SelectByKeys(IList<K> keys);
@@ -150,5 +148,71 @@ namespace SharpEntities
         {
             return reader.Read();
         }
+
+        private List<E> insertables = null;
+        private List<K> deletables = null;
+
+        public virtual void BeginUpdate()
+        {
+            if (insertables != null) return;
+            insertables = new List<E>();
+        }
+
+        public virtual void EndUpdate()
+        {
+            if (insertables == null) return;
+            InsertEntities(insertables);
+        }
+
+        public virtual void BeginDelete()
+        {
+            if (deletables != null) return;
+            deletables = new List<K>();
+        }
+
+
+        public virtual void EndDelete()
+        {
+            if (deletables == null) return;
+            DeleteEntities(deletables);
+        }
+
+        public virtual void UpdateSaveCache()
+        {
+            foreach (KeyValuePair<K, E> kvp in entityCache)
+            {
+                if (kvp.Value.Changed)
+                    Update(kvp.Value);
+            }
+        }
+
+        public virtual void Update(E entity)
+        {
+            if (insertables != null)
+                insertables.Add(entity);
+            else
+                InsertEntities(new[] { entity });
+
+            entity.OnSaved();
+        }
+
+        public virtual void Delete(E entity)
+        {
+            if (deletables != null)
+                deletables.Add(entity.Key);
+            else
+                DeleteEntities(new[] { entity.Key });
+        }
+
+        public virtual void Delete(K key)
+        {
+            if (deletables != null)
+                deletables.Add(key);
+            else
+                DeleteEntities(new[] { key });
+        }
+
+        protected abstract void InsertEntities(IList<E> entities);
+        protected abstract void DeleteEntities(IList<K> keys);
     }
 }

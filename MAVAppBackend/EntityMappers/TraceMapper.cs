@@ -9,7 +9,7 @@ using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
 {
-    public class TraceMapper : UpdatableEntityMapper<int, Trace>
+    public class TraceMapper : EntityMapper<int, Trace>
     {
         private readonly SelectQuery baseQuery;
 
@@ -17,11 +17,6 @@ namespace MAVAppBackend.EntityMappers
             : base(connection, new Dictionary<int, Trace>())
         {
             baseQuery = SqlQuery.Select().From("trace").AllColumns();
-        }
-
-        protected override Trace CreateEntity(int key)
-        {
-            return new Trace(key);
         }
 
         private DatabaseCommand selectByKeyCmd;
@@ -58,7 +53,7 @@ namespace MAVAppBackend.EntityMappers
             DatabaseCommand command = SqlQuery.Insert().Columns(new[] { "id", "train_instance_id", "lat", "lon", "updated" }).Into("trace").Values(entities.Count)
                 .OnDuplicateKey(new[] { "train_instance_id", "lat", "lon", "updated"} ).ToPreparedCommand(connection);
 
-            command.Parameters.AddMultiple("@id", entities.Select(e => e.Key));
+            command.Parameters.AddMultiple("@id", entities.Select(e => e.Key == -1 ? null : (object)e.Key));
             command.Parameters.AddMultiple("@train_instance_id", entities.Select(e => e.TrainInstanceID));
             command.Parameters.AddMultipleVector2("@lat", "@lon", entities.Select(e => e.GPSCoord));
             command.Parameters.AddMultiple("@updated", entities.Select(e => e.Updated));

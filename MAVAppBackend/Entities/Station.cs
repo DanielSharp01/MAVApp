@@ -1,19 +1,13 @@
 ﻿using MAVAppBackend.DataAccess;
-using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using SharpEntities;
+using System.Data.Common;
 
 namespace MAVAppBackend.Entities
 {
     /// <summary>
     /// Station with GPS information
     /// </summary>
-    public class Station : UpdatableEntity<int>
+    public class Station : Entity<int>
     {
         /// <summary>
         /// Name of the station
@@ -29,21 +23,8 @@ namespace MAVAppBackend.Entities
         /// GPS Position as latitude (X) longitude (Y)
         /// </summary>
         public Vector2 GPSCoord { get; set; }
-
-
-        /// <param name="key">Database Key</param>
-        public Station(int key)
-            : base(key)
-        { }
-
-        /// <param name="normName">Normalized name</param>
-        public Station(string normName)
-            : base(-1)
-        {
-            NormalizedName = normName;
-        }
         
-        protected override void InternalFill(DbDataReader reader)
+        public override void Fill(DbDataReader reader)
         {
             Key = reader.GetInt32("id");
             Name = reader.GetString("name");
@@ -52,7 +33,7 @@ namespace MAVAppBackend.Entities
             Filled = true;
         }
 
-        public override void Fill(UpdatableEntity<int> other)
+        public override void Fill(Entity<int> other)
         {
             if (!(other is Station station)) return;
 

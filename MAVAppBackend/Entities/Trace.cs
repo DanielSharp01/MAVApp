@@ -8,7 +8,7 @@ using SharpEntities;
 
 namespace MAVAppBackend.Entities
 {
-    public class Trace : UpdatableEntity<int>
+    public class Trace : Entity<int>
     {
         private int trainInstanceID;
         public int TrainInstanceID
@@ -42,12 +42,7 @@ namespace MAVAppBackend.Entities
                 OnChange();
             }
         }
-
-        public Trace(int key)
-            : base(key)
-        { }
-
-        protected override void InternalFill(DbDataReader reader)
+        public override void Fill(DbDataReader reader)
         {
             Key = reader.GetInt32("id");
             trainInstanceID = reader.GetInt32("train_instance_id");
@@ -56,7 +51,7 @@ namespace MAVAppBackend.Entities
             Filled = true;
         }
 
-        public override void Fill(UpdatableEntity<int> other)
+        public override void Fill(Entity<int> other)
         {
             if (!(other is Trace trace)) return;
 

@@ -9,7 +9,7 @@ using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
 {
-    public class TrainInstanceMapper : UpdatableEntityMapper<long, TrainInstance>
+    public class TrainInstanceMapper : EntityMapper<long, TrainInstance>
     {
         private readonly SelectQuery baseQuery;
 
@@ -17,11 +17,6 @@ namespace MAVAppBackend.EntityMappers
             : base(connection, new Dictionary<long, TrainInstance>())
         {
             baseQuery = SqlQuery.Select().From("train_instances").AllColumns();
-        }
-
-        protected override TrainInstance CreateEntity(long key)
-        {
-            return new TrainInstance(key);
         }
 
         private DatabaseCommand selectByKeyCmd;

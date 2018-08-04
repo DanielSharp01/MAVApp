@@ -8,7 +8,7 @@ using SharpEntities;
 
 namespace MAVAppBackend.Entities
 {
-    public class TrainInstance : UpdatableEntity<long>
+    public class TrainInstance : Entity<long>
     {
         public string ElviraID { get; private set; }
         public DateTime Date { get; private set; }
@@ -24,11 +24,7 @@ namespace MAVAppBackend.Entities
             }
         }
 
-        public TrainInstance(long key)
-            : base(key)
-        { }
-
-        protected override void InternalFill(DbDataReader reader)
+        public override void Fill(DbDataReader reader)
         {
             long id = Key;
             long date = id % 10000000000;
@@ -43,7 +39,7 @@ namespace MAVAppBackend.Entities
             Filled = true;
         }
 
-        public override void Fill(UpdatableEntity<long> other)
+        public override void Fill(Entity<long> other)
         {
             if (!(other is TrainInstance trainInstance)) return;
 

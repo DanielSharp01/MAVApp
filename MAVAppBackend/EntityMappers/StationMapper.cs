@@ -8,7 +8,7 @@ using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
 {
-    public class StationMapper : UpdatableEntityMapper<int, Station>
+    public class StationMapper : EntityMapper<int, Station>
     {
         private readonly SelectQuery baseQuery;
 
@@ -20,11 +20,6 @@ namespace MAVAppBackend.EntityMappers
             : base(connection, new Dictionary<int, Station>())
         {
             baseQuery = SqlQuery.Select().AllColumns().From("stations");
-        }
-
-        protected override Station CreateEntity(int key)
-        {
-            return new Station(key);
         }
 
         public virtual void BeginSelectNormName(BatchSelectStrategy batchSelectStrategy = BatchSelectStrategy.MultiKey)
@@ -64,17 +59,17 @@ namespace MAVAppBackend.EntityMappers
             normNameSelectBatch = null;
         }
 
-        protected Station CreateEntityInternal(string normName)
+        protected Station CreateEntity(string normName)
         {
             if (entityCache == null)
             {
-                return new Station(normName);
+                return new Station() {NormalizedName=normName};
             }
 
             if (normNameCache.TryGetValue(normName, out Station entity))
                 return entity;
 
-            normNameCache.Add(normName, entity = new Station(normName));
+            normNameCache.Add(normName, entity = new Station() { NormalizedName = normName });
             return entity;
         }
 
@@ -84,14 +79,14 @@ namespace MAVAppBackend.EntityMappers
             base.FillEntity(entity, reader);
 
             if (keyMissing)
-                CreateEntityInternal(entity.Key);
+                CreateEntity(entity.Key);
             else
-                CreateEntityInternal(entity.NormalizedName);
+                CreateEntity(entity.NormalizedName);
         }
 
         public virtual Station GetByNormName(string normName, bool forceFill = true)
         {
-            Station entity = CreateEntityInternal(normName);
+            Station entity = CreateEntity(normName);
             if (normNameCache == null || forceFill) FillByNormName(entity);
             return entity;
         }
@@ -117,11 +112,6 @@ namespace MAVAppBackend.EntityMappers
             if (reader.Read())
             {
                 FillEntity(entity, reader);
-
-                if (normNameCache.ContainsKey(entity.NormalizedName))
-                    return;
-
-                normNameCache.Add(entity.NormalizedName, new Station(entity.NormalizedName));
             }
             reader.Close();
         }

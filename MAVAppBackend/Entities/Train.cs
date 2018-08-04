@@ -8,7 +8,7 @@ using SharpEntities;
 
 namespace MAVAppBackend.Entities
 {
-    public class Train : UpdatableEntity<int>
+    public class Train : Entity<int>
     {
         private string name;
         public string Name
@@ -53,12 +53,7 @@ namespace MAVAppBackend.Entities
                 OnChange();
             }
         }
-
-        public Train(int id)
-            : base(id)
-        { }
-
-        protected override void InternalFill(DbDataReader reader)
+        public override void Fill(DbDataReader reader)
         {
             name = reader.GetStringOrNull("name");
             type = reader.GetStringOrNull("type");
@@ -67,7 +62,7 @@ namespace MAVAppBackend.Entities
             Filled = true;
         }
 
-        public override void Fill(UpdatableEntity<int> other)
+        public override void Fill(Entity<int> other)
         {
             if (!(other is Train train)) return;
 

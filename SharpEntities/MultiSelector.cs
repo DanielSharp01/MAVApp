@@ -59,7 +59,7 @@ namespace SharpEntities
             selectBatch = null;
         }
 
-        public virtual C GetByKey(B key, bool forceFill = true)
+        public virtual C GetByKey(B key)
         {
             if (selectBatch != null && selectBatch.ContainsKey(key))
             {
@@ -84,16 +84,16 @@ namespace SharpEntities
             }
         }
 
-        protected virtual void FillByKeySingle(C entityCollection)
+        protected virtual void FillByKeySingle(C collection)
         {
-            DbDataReader reader = SelectByKey(entityCollection.Key);
+            DbDataReader reader = SelectByKey(collection.Key);
             while (reader.Read())
             {
                 var entity = CreateEntity(GetKey(reader));
                 entity.Fill(reader);
                 entity.Filled = true;
-                entityCollection.Add(entity);
-                entityCollection.Filled = true;
+                collection.Add(entity);
+                collection.Filled = true;
                 cacheContainer.OnUpdate(entity);
             }
             reader.Close();

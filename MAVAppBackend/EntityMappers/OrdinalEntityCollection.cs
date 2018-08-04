@@ -23,6 +23,12 @@ namespace MAVAppBackend.EntityMappers
             orderedEntities.Clear();
         }
 
+        public E this[int i]
+        {
+            get { return orderedEntities[i]; }
+            set { orderedEntities[i] = value; }
+        }
+
         public override bool Contains(E item)
         {
             return orderedEntities.ContainsValue(item);

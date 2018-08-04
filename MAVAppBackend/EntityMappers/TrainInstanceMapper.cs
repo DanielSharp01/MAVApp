@@ -63,7 +63,7 @@ namespace MAVAppBackend.EntityMappers
             if (keys.Count == 0) return;
 
             DatabaseCommand cmd = SqlQuery.Delete().From("train_instances").WhereIn("id", keys.Count).ToPreparedCommand(connection);
-            cmd.Parameters.Add("@id", keys);
+            cmd.Parameters.AddMultiple("@id", keys);
             cmd.ExecuteNonQuery();
         }
     }

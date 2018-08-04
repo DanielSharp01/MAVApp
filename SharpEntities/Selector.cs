@@ -67,7 +67,7 @@ namespace SharpEntities
             }
 
             E entity = (cacheName != null ? cacheContainer.GetFromCache<B>(cacheName, key) : null) ?? CreateEntity(key);
-            if (cacheName != null || forceFill) FillByKey(entity);
+            if (cacheName != null || !entity.Filled || forceFill) FillByKey(entity);
             return entity;
         }
 

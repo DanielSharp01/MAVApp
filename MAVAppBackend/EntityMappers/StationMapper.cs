@@ -43,7 +43,7 @@ namespace MAVAppBackend.EntityMappers
             protected override DbDataReader SelectByKeys(IList<string> keys)
             {
                 DatabaseCommand cmd = baseQuery.Clone().WhereIn("norm_name", keys.Count).ToPreparedCommand(connection);
-                cmd.Parameters.Add("@norm_name", keys);
+                cmd.Parameters.AddMultiple("@norm_name", keys);
                 return cmd.ExecuteReader();
             }
 
@@ -96,7 +96,7 @@ namespace MAVAppBackend.EntityMappers
         {
             DatabaseCommand cmd = baseQuery.Clone().WhereIn("id", keys.Count).ToPreparedCommand(connection);
             cmd.Parameters.Clear();
-            cmd.Parameters.Add("@id", keys);
+            cmd.Parameters.AddMultiple("@id", keys);
             return cmd.ExecuteReader();
         }
 

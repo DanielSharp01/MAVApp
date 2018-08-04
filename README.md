@@ -8,14 +8,20 @@ Is contained in the `tables.sql` and `data.sql` file in the root of the reposito
 
 ## Tasks
 
-- [ ] Data Access Layer
+- [x] Data Access Layer
   - [x] Stations
   - [x] Trains
   - [x] TrainInstances
   - [x] TrainStations
   - [x] TrainInstanceStations
   - [x] Trace
-  - [ ] Embed classes in each other
+
+- [ ] Model objects that make communication with Entities easier
+  - [ ] Train
+  - [ ] TrainStation
+  - [ ] TrainInstance
+  - [ ] TrainInstanceStation
+  - [ ] Trace
 
 - [ ] API Handlers
   - [ ] TRAIN

@@ -33,7 +33,7 @@ namespace SharpEntities
             return entity.Key;
         }
 
-        public List<E> GetAll()
+        public virtual List<E> GetAll()
         {
             List<E> entities = new List<E>();
             DbDataReader reader = SelectAll();
@@ -99,6 +99,19 @@ namespace SharpEntities
                 InsertEntities(new[] { entity });
 
             entity.OnSaved();
+        }
+
+        public virtual void Update(IList<E> entities)
+        {
+            if (insertables != null)
+                insertables.AddRange(entities);
+            else
+                InsertEntities(entities);
+
+            foreach (var entity in entities)
+            {
+                entity.OnSaved();
+            }
         }
 
         public virtual void Delete(E entity)

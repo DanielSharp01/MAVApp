@@ -42,7 +42,7 @@ namespace MAVAppBackend.EntityMappers
             if (keys.Count == 0) return;
 
             DatabaseCommand cmd = SqlQuery.Delete().From("trains").WhereIn("id", keys.Count).ToPreparedCommand(connection);
-            cmd.Parameters.Add("@id", keys);
+            cmd.Parameters.AddMultiple("@id", keys);
             cmd.ExecuteNonQuery();
         }
 
@@ -58,7 +58,7 @@ namespace MAVAppBackend.EntityMappers
         protected override DbDataReader SelectByKeys(IList<int> keys)
         {
             DatabaseCommand cmd = baseQuery.Clone().WhereIn("id", keys.Count).ToPreparedCommand(connection);
-            cmd.Parameters.Add("@id", keys);
+            cmd.Parameters.AddMultiple("@id", keys);
             return cmd.ExecuteReader();
         }
 

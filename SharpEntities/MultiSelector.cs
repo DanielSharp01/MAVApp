@@ -87,7 +87,7 @@ namespace SharpEntities
         protected virtual void FillByKeySingle(C entityCollection)
         {
             DbDataReader reader = SelectByKey(entityCollection.Key);
-            if (reader.Read())
+            while (reader.Read())
             {
                 var entity = CreateEntity(GetKey(reader));
                 entity.Fill(reader);

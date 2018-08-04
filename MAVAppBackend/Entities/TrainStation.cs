@@ -7,7 +7,7 @@ using SharpEntities;
 
 namespace MAVAppBackend.Entities
 {
-    public class TrainStation : Entity<int>
+    public class TrainStation : OrdinalEntity<int>
     {
         private int trainID;
         public int TrainID
@@ -16,17 +16,6 @@ namespace MAVAppBackend.Entities
             set
             {
                 trainID = value;
-                OnChange();
-            }
-        }
-
-        private int ordinal;
-        public int Ordinal
-        {
-            get => ordinal;
-            set
-            {
-                ordinal = value;
                 OnChange();
             }
         }

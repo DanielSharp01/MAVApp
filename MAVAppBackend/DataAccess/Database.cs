@@ -27,7 +27,7 @@ namespace MAVAppBackend.DataAccess
         public TrainInstanceMapper TrainInstanceMapper => trainInstanceMapper ?? (trainInstanceMapper = new TrainInstanceMapper(connection));
 
         private TrainStationMapper trainStationMapper;
-        public TrainStationMapper TraiTrainStationMappernInstanceMapper => trainStationMapper ?? (trainStationMapper = new TrainStationMapper(connection));
+        public TrainStationMapper TrainStationMapper => trainStationMapper ?? (trainStationMapper = new TrainStationMapper(connection));
 
         private TrainInstanceStationMapper trainInstanceStationMapper;
         public TrainInstanceStationMapper TrainInstanceStationMapper => trainInstanceStationMapper ?? (trainInstanceStationMapper = new TrainInstanceStationMapper(connection));

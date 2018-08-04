@@ -53,7 +53,7 @@ namespace MAVAppBackend.EntityMappers
             DatabaseCommand command = SqlQuery.Insert().Columns(new[] { "id", "train_id", }).Into("train_instances").Values(entities.Count)
                 .OnDuplicateKey("train_id").ToPreparedCommand(connection);
 
-            command.Parameters.AddMultiple("@id", entities.Select(e => e.Key));
+            command.Parameters.AddMultiple("@id", entities.Select(e => e.Key == -1 ? null : (object)e.Key));
             command.Parameters.AddMultiple("@train_id", entities.Select(e => e.TrainID));
             command.ExecuteNonQuery();
         }

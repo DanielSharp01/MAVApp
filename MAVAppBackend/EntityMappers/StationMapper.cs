@@ -10,110 +10,77 @@ namespace MAVAppBackend.EntityMappers
 {
     public class StationMapper : EntityMapper<int, Station>
     {
-        private readonly SelectQuery baseQuery;
+        public class NormalizedNameSelector : Selector<string, int, Station>
+        {
+            private readonly DatabaseConnection connection;
+            private readonly SelectQuery baseQuery;
+            private readonly Func<DbDataReader> selectAll;
 
-        private readonly Dictionary<string, Station> normNameCache = new Dictionary<string, Station>();
-        protected Dictionary<string, List<Station>> normNameSelectBatch;
-        protected BatchSelectStrategy normNameBatchSelectStrategy;
+            private DbDataReader SelectByNormalizedNames(IList<string> normNames)
+            {
+                DatabaseCommand cmd = baseQuery.Clone().WhereIn("norm_name", normNames.Count).ToPreparedCommand(connection);
+                cmd.Parameters.Add("@norm_name", normNames);
+                return cmd.ExecuteReader();
+            }
+
+            public NormalizedNameSelector(CacheContainer<int, Station> cacheContainer, Func<DbDataReader> selectAll, DatabaseConnection connection, SelectQuery baseQuery)
+                : base(cacheContainer, "norm_name")
+            {
+                this.connection = connection;
+                this.baseQuery = baseQuery;
+                this.selectAll = selectAll;
+            }
+
+            private DatabaseCommand selectCmd;
+            protected override DbDataReader SelectByKey(string key)
+            {
+                selectCmd = selectCmd ?? baseQuery.Clone().Where("`norm_name` = @norm_name").ToPreparedCommand(connection);
+                selectCmd.Parameters.Clear();
+                selectCmd.Parameters.Add("@norm_name", key);
+                return selectCmd.ExecuteReader();
+            }
+
+            protected override DbDataReader SelectByKeys(IList<string> keys)
+            {
+                DatabaseCommand cmd = baseQuery.Clone().WhereIn("norm_name", keys.Count).ToPreparedCommand(connection);
+                cmd.Parameters.Add("@norm_name", keys);
+                return cmd.ExecuteReader();
+            }
+
+            protected override DbDataReader SelectAll()
+            {
+                return selectAll();
+            }
+
+            protected override string GetKey(Station entity)
+            {
+                return entity.NormalizedName;
+            }
+
+            protected override string GetKey(DbDataReader reader)
+            {
+                return reader.GetString("norm_name");
+            }
+
+            protected override Station CreateEntity(string key)
+            {
+                return new Station() { NormalizedName = key };
+            }
+
+            protected override void CacheContainerOnUpdate(Station entity)
+            {
+                cacheContainer.GetCache<string>("norm_name")[entity.NormalizedName] = entity;
+            }
+        }
+
+        private readonly SelectQuery baseQuery;
+        public readonly NormalizedNameSelector ByNormName;
 
         public StationMapper(DatabaseConnection connection)
-            : base(connection, new Dictionary<int, Station>())
+            : base(connection)
         {
             baseQuery = SqlQuery.Select().AllColumns().From("stations");
-        }
-
-        public virtual void BeginSelectNormName(BatchSelectStrategy batchSelectStrategy = BatchSelectStrategy.MultiKey)
-        {
-            if (selectBatch != null) return;
-            normNameBatchSelectStrategy = batchSelectStrategy;
-            normNameSelectBatch = new Dictionary<string, List<Station>>();
-        }
-
-        public virtual void EndSelectNormName()
-        {
-            if (normNameSelectBatch == null) return;
-
-            if (normNameSelectBatch.Count == 0)
-            {
-                normNameSelectBatch = null;
-                return;
-            }
-
-            DbDataReader reader = (normNameBatchSelectStrategy == BatchSelectStrategy.MultiKey) ? SelectByNormalizedNames(normNameSelectBatch.Keys.ToList()) : SelectAll();
-
-            if (reader.Read())
-            {
-                do
-                {
-                    string key = reader.GetString("norm_name");
-                    if (!normNameSelectBatch.ContainsKey(key)) continue;
-
-                    foreach (Station entity in normNameSelectBatch[key])
-                    {
-                        FillEntity(entity, reader);
-                    }
-                } while (AdvanceReader(reader));
-            }
-
-            reader.Close();
-            normNameSelectBatch = null;
-        }
-
-        protected Station CreateEntity(string normName)
-        {
-            if (entityCache == null)
-            {
-                return new Station() {NormalizedName=normName};
-            }
-
-            if (normNameCache.TryGetValue(normName, out Station entity))
-                return entity;
-
-            normNameCache.Add(normName, entity = new Station() { NormalizedName = normName });
-            return entity;
-        }
-
-        protected override void FillEntity(Station entity, DbDataReader reader)
-        {
-            bool keyMissing = entity.Key == -1;
-            base.FillEntity(entity, reader);
-
-            if (keyMissing)
-                CreateEntity(entity.Key);
-            else
-                CreateEntity(entity.NormalizedName);
-        }
-
-        public virtual Station GetByNormName(string normName, bool forceFill = true)
-        {
-            Station entity = CreateEntity(normName);
-            if (normNameCache == null || forceFill) FillByNormName(entity);
-            return entity;
-        }
-
-        public virtual void FillByNormName(Station entity)
-        {
-            if (selectBatch == null)
-            {
-                FillByNormNameSingle(entity);
-            }
-            else
-            {
-                if (!normNameSelectBatch.ContainsKey(entity.NormalizedName))
-                    normNameSelectBatch.Add(entity.NormalizedName, new List<Station>());
-
-                normNameSelectBatch[entity.NormalizedName].Add(entity);
-            }
-        }
-
-        protected virtual void FillByNormNameSingle(Station entity)
-        {
-            DbDataReader reader = SelectByNormalizedName(entity.NormalizedName);
-            if (reader.Read())
-            {
-                FillEntity(entity, reader);
-            }
-            reader.Close();
+            ByNormName = new NormalizedNameSelector(cacheContainer, SelectAll, connection, baseQuery);
         }
 
         private DatabaseCommand selectByKeyCmd;
@@ -138,22 +105,6 @@ namespace MAVAppBackend.EntityMappers
         {
             selectAllCmd = selectAllCmd ?? baseQuery.ToCommand(connection);
             return selectAllCmd.ExecuteReader();
-        }
-
-        private DatabaseCommand selectByNormNameCmd;
-        private DbDataReader SelectByNormalizedName(string normName)
-        {
-            selectByNormNameCmd = selectByNormNameCmd ?? baseQuery.Clone().Where("`norm_name` = @norm_name").ToPreparedCommand(connection);
-            selectByNormNameCmd.Parameters.Clear();
-            selectByNormNameCmd.Parameters.Add("@norm_name", normName);
-            return selectByNormNameCmd.ExecuteReader();
-        }
-
-        private DbDataReader SelectByNormalizedNames(IList<string> normNames)
-        {
-            DatabaseCommand cmd = baseQuery.Clone().WhereIn("norm_name", normNames.Count).ToPreparedCommand(connection);
-            cmd.Parameters.Add("@norm_name", normNames);
-            return cmd.ExecuteReader();
         }
 
         protected override int GetKey(DbDataReader reader)

@@ -12,7 +12,7 @@ namespace MAVAppBackend.EntityMappers
         private readonly SelectQuery baseQuery;
 
         public TrainStationMapper(DatabaseConnection connection)
-            : base(connection, new Dictionary<int, TrainStation>())
+            : base(connection)
         {
             baseQuery = SqlQuery.Select().AllColumns().From("train_stations");
         }

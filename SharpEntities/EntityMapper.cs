@@ -13,140 +13,45 @@ namespace SharpEntities
         All
     }
 
-    public abstract class EntityMapper<K, E> where E : Entity<K>, new()
+    public abstract class EntityMapper<K, E> : Selector<K, K, E> where E : Entity<K>, new()
     {
         protected DatabaseConnection connection;
-        
-        protected Dictionary<K, List<E>> selectBatch;
-        protected BatchSelectStrategy batchSelectStrategy;
 
-        protected IDictionary<K, E> entityCache;
-
-        public EntityMapper(DatabaseConnection connection, IDictionary<K, E> entityCache = null)
+        protected EntityMapper(DatabaseConnection connection)
+            : base(new CacheContainer<K, E>(), "key")
         {
             this.connection = connection;
-            this.entityCache = entityCache;
         }
 
-        public virtual void BeginSelect(BatchSelectStrategy batchSelectStrategy = BatchSelectStrategy.MultiKey)
+        protected override E CreateEntity(K key)
         {
-            if (selectBatch != null) return;
-            this.batchSelectStrategy = batchSelectStrategy;
-            selectBatch = new Dictionary<K, List<E>>();
+            return new E() { Key = key };
         }
 
-        public virtual void EndSelect()
+        protected override K GetKey(E entity)
         {
-            if (selectBatch == null) return;
-
-            if (selectBatch.Count == 0)
-            {
-                selectBatch = null;
-                return;
-            }
-
-            DbDataReader reader = (batchSelectStrategy == BatchSelectStrategy.MultiKey) ? SelectByKeys(selectBatch.Keys.ToList()) : SelectAll();
-
-            if (reader.Read())
-            {
-                do
-                {
-                    K key = GetKey(reader);
-                    if (!selectBatch.ContainsKey(key)) continue;
-
-                    foreach (E entity in selectBatch[key])
-                    {
-                        FillEntity(entity, reader);
-                    }
-                } while (AdvanceReader(reader));
-            }
-
-            reader.Close();
-            selectBatch = null;
+            return entity.Key;
         }
 
-        protected virtual E CreateEntity(K key)
-        {
-            if (entityCache == null)
-            {
-                return new E() {Key = key};
-            }
-
-            if (entityCache.TryGetValue(key, out E entity))
-                return entity;
-
-            entityCache.Add(key, entity = new E() { Key = key };
-            return entity;
-        }
-
-        public virtual E GetByKey(K key, bool forceFill = true)
-        {
-            E entity = CreateEntity(key);
-            if (entityCache == null || forceFill) FillByKey(entity);
-            return entity;
-        }
-
-        public virtual void FillByKey(E entity)
-        {
-            if (selectBatch == null)
-            {
-                FillByKeySingle(entity);
-            }
-            else
-            {
-                if (!selectBatch.ContainsKey(entity.Key))
-                    selectBatch.Add(entity.Key, new List<E>());
-
-                selectBatch[entity.Key].Add(entity);
-            }
-        }
-
-        protected virtual void FillByKeySingle(E entity)
-        {
-            DbDataReader reader = SelectByKey(entity.Key);
-            if (reader.Read())
-            {
-                FillEntity(entity, reader);
-            }
-            reader.Close();
-        }
-
-        public virtual List<E> GetAll()
+        public List<E> GetAll()
         {
             List<E> entities = new List<E>();
-
             DbDataReader reader = SelectAll();
-            if (reader.Read())
+            while (reader.Read())
             {
-                do 
-                {
-                    E entity = CreateEntity(GetKey(reader));
-                    FillEntity(entity, reader);
-                    entities.Add(entity);
-                } while (AdvanceReader(reader));
+                var entity = new E() { Key = GetKey(reader) };
+                entity.Fill(reader);
+                entity.Filled = true;
+                cacheContainer.OnUpdate(entity);
+                entities.Add(entity);
             }
-
-            reader.Close();
 
             return entities;
         }
 
-        protected virtual void FillEntity(E entity, DbDataReader reader)
+        protected override void CacheContainerOnUpdate(E entity)
         {
-            entity.Fill(reader);
-        }
-
-        protected abstract DbDataReader SelectByKey(K key);
-
-        protected abstract DbDataReader SelectByKeys(IList<K> keys);
-
-        protected abstract DbDataReader SelectAll();
-
-        protected abstract K GetKey(DbDataReader reader);
-
-        protected virtual bool AdvanceReader(DbDataReader reader)
-        {
-            return reader.Read();
+            cacheContainer.GetCache<K>("key")[entity.Key] = entity;
         }
 
         private List<E> insertables = null;
@@ -179,7 +84,7 @@ namespace SharpEntities
 
         public virtual void UpdateSaveCache()
         {
-            foreach (KeyValuePair<K, E> kvp in entityCache)
+            foreach (KeyValuePair<K, E> kvp in cacheContainer.GetCache<K>("key"))
             {
                 if (kvp.Value.Changed)
                     Update(kvp.Value);

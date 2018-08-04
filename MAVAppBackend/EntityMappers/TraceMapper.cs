@@ -14,7 +14,7 @@ namespace MAVAppBackend.EntityMappers
         private readonly SelectQuery baseQuery;
 
         public TraceMapper(DatabaseConnection connection)
-            : base(connection, new Dictionary<int, Trace>())
+            : base(connection)
         {
             baseQuery = SqlQuery.Select().From("trace").AllColumns();
         }

@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
 using MAVAppBackend.DataAccess;
+using Microsoft.CodeAnalysis.Semantics;
 using SharpEntities;
 
 namespace MAVAppBackend.Entities
@@ -13,8 +14,8 @@ namespace MAVAppBackend.Entities
         public string ElviraID { get; private set; }
         public DateTime Date { get; private set; }
 
-        private int trainID;
-        public int TrainID
+        private int? trainID;
+        public int? TrainID
         {
             get => trainID;
             set
@@ -26,16 +27,9 @@ namespace MAVAppBackend.Entities
 
         public override void Fill(DbDataReader reader)
         {
-            long id = Key;
-            long date = id % 10000000000;
-            id /= 100;
-            long month = id % 100000000;
-            id /= 100;
-            long year = id % 1000000;
-
-            ElviraID = (id / 1000000) + "_" + (id % 1000000);
-            Date = new DateTime(DateTime.Now.Year - DateTime.Now.Year % 100 + (int)year, (int)month, (int)date);
-            trainID = reader.GetInt32("train_id");
+            ElviraID = GetElviraID(Key);
+            Date = GetDateTime(Key);
+            trainID = reader.GetInt32OrNull("train_id");
             Filled = true;
         }
 
@@ -47,6 +41,28 @@ namespace MAVAppBackend.Entities
             Date = trainInstance.Date;
             trainID = trainInstance.trainID;
             Filled = trainInstance.Filled;
+        }
+
+        public static long GetInstanceID(string elviraID)
+        {
+            return long.Parse(elviraID.Remove(elviraID.IndexOf('_'), 1));
+        }
+
+        public static DateTime GetDateTime(long instanceID)
+        {
+            long datePart = instanceID % 1000000;
+            long date = datePart % 100;
+            datePart /= 100;
+            long month = datePart % 100;
+            datePart /= 100;
+            long year = datePart;
+            
+            return new DateTime(DateTime.Now.Year - DateTime.Now.Year % 100 + (int)year, (int)month, (int)date);
+        }
+
+        public static string GetElviraID(long instanceID)
+        {
+            return (instanceID / 1000000) + "_" + (instanceID % 1000000);
         }
     }
 }

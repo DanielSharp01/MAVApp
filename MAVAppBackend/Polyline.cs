@@ -32,12 +32,12 @@ namespace MAVAppBackend
         public IReadOnlyList<Vector2> ProjectedPoints;
 
         /// <param name="points">Points representing the polyline as latitude, longitude</param>
-        public Polyline(List<Vector2> points)
+        public Polyline(IEnumerable<Vector2> points)
         {
             this.points.AddRange(points);
-            Points = points.AsReadOnly();
+            Points = this.points.AsReadOnly();
 
-            projectedPoints.AddRange(points.Select(p => WebMercator.Default.FromLatLon(p)));
+            projectedPoints.AddRange(this.points.Select(p => WebMercator.Default.FromLatLon(p)));
             ProjectedPoints = projectedPoints.AsReadOnly();
         }
 
@@ -72,8 +72,8 @@ namespace MAVAppBackend
         /// </summary>
         /// <param name="point">Point to be projected as latitude, longitude</param>
         /// <param name="distanceLimit">The distance limit with which a point is still considered projectable</param>
-        /// <returns>Distance from the start if projectable, NAN otherwise</returns>
-        public double GetProjectedDistance(Vector2 point, double distanceLimit)
+        /// <returns>Distance from the start if projectable, null otherwise</returns>
+        public double? GetProjectedDistance(Vector2 point, double distanceLimit)
         {
             point = WebMercator.Default.FromLatLon(point);
             double kmpp = WebMercator.Default.MeterPerUnit() / 1000;
@@ -103,7 +103,7 @@ namespace MAVAppBackend
 
             // The point could not be projected
             if (bestIndex == -1)
-                return double.NaN;
+                return null;
 
             double km = 0;
             for (int i = 0; i < bestIndex; i++)
@@ -127,10 +127,10 @@ namespace MAVAppBackend
         {
             List<Vector2> segmentPoints = new List<Vector2>();
 
-            double aDist = GetProjectedDistance(a, distanceLimit);
-            double bDist = GetProjectedDistance(b, distanceLimit);
+            double? aDist = GetProjectedDistance(a, distanceLimit);
+            double? bDist = GetProjectedDistance(b, distanceLimit);
 
-            if (double.IsNaN(aDist) || double.IsNaN(bDist)) return null;
+            if (!aDist.HasValue || !bDist.HasValue) return null;
 
             if (aDist > bDist)
             {
@@ -138,7 +138,7 @@ namespace MAVAppBackend
                 a = b;
                 b = tmp;
 
-                double tmpDist = aDist;
+                double? tmpDist = aDist;
                 aDist = bDist;
                 bDist = tmpDist;
             }

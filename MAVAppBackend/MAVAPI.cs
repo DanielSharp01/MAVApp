@@ -14,47 +14,6 @@ using System.Threading.Tasks;
 namespace MAVAppBackend
 {
     /// <summary>
-    /// Position, delay data from the TRAINS API
-    /// </summary>
-    public class TRAINSData
-    {
-        /// <summary>
-        /// Unique Key used by MÁV
-        /// </summary>
-        public string ElviraID
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// GPS Position as Latitude (X), Longitude (Y)
-        /// </summary>
-        public Vector2 GPSCoord
-
-        {
-            private set;
-            get;
-        }
-
-        /// <summary>
-        /// Delay in minutes
-        /// </summary>
-        public int Delay
-        {
-            private set;
-            get;
-        }
-
-        public TRAINSData(string elviraID, Vector2 gpsCoord, int delay)
-        {
-            ElviraID = elviraID;
-            GPSCoord = gpsCoord;
-            Delay = delay;
-        }
-    }
-
-    /// <summary>
     /// Exception thrown if the MAV API fails
     /// </summary>
     public class MAVAPIException : Exception
@@ -225,9 +184,8 @@ namespace MAVAppBackend
         /// Request TRAINS API for data about trains (position, delay) from MÁV
         /// </summary>
         /// <returns></returns>
-        public static List<TRAINSData> RequestTrains()
+        public static JObject RequestTrains()
         {
-            List<TRAINSData> ret = new List<TRAINSData>();
             try
             {
                 JObject request = new JObject();
@@ -236,22 +194,15 @@ namespace MAVAppBackend
                 request["jo"]["history"] = false;
                 request["jo"]["id"] = false;
                 JObject response = RequestMAV(request);
-                if (response != null)
-                {
-                    foreach (JObject train in response["d"]["result"]["Trains"]["Train"])
-                    {
-                        ret.Add(new TRAINSData(train["@ElviraID"].ToString(), new Vector2(train["@Lat"].ToString(), train["@Lon"].ToString()), int.Parse(train["@Delay"].ToString())));
-                    }
-                }
+                return response;
             }
             catch (MAVAPIException e)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("MAVAPIException: " + e.Message);
                 Console.ResetColor();
+                return null;
             }
-
-            return ret;
         }
     }
 }

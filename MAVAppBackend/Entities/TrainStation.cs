@@ -31,8 +31,8 @@ namespace MAVAppBackend.Entities
             }
         }
 
-        private DateTime? arrival;
-        public DateTime? Arrival
+        private TimeSpan? arrival;
+        public TimeSpan? Arrival
         {
             get => arrival;
             set
@@ -42,8 +42,8 @@ namespace MAVAppBackend.Entities
             }
         }
 
-        private DateTime? departure;
-        public DateTime? Departure
+        private TimeSpan? departure;
+        public TimeSpan? Departure
         {
             get => departure;
             set
@@ -53,8 +53,8 @@ namespace MAVAppBackend.Entities
             }
         }
 
-        private double relativeDistance;
-        public double RelativeDistance
+        private double? relativeDistance;
+        public double? RelativeDistance
         {
             get => relativeDistance;
             set
@@ -79,9 +79,9 @@ namespace MAVAppBackend.Entities
             trainID = reader.GetInt32("train_id");
             ordinal = reader.GetInt32("ordinal");
             stationID = reader.GetInt32("station_id");
-            arrival = reader.GetDateTimeOrNull("arrival");
-            departure = reader.GetDateTimeOrNull("departure");
-            relativeDistance = reader.GetDouble("rel_distance");
+            arrival = reader.GetTimeSpanOrNull("arrival");
+            departure = reader.GetTimeSpanOrNull("departure");
+            relativeDistance = reader.GetDoubleOrNull("rel_distance");
             platform = reader.GetStringOrNull("platform");
             Filled = true;
         }

@@ -9,8 +9,8 @@ namespace MAVAppBackend.Entities
 {
     public class TrainInstanceStation : Entity<int>
     {
-        private int trainInstanceID;
-        public int TrainInstanceID
+        private long trainInstanceID;
+        public long TrainInstanceID
         {
             get => trainInstanceID;
             set
@@ -31,8 +31,8 @@ namespace MAVAppBackend.Entities
             }
         }
 
-        private DateTime? actualArrival;
-        public DateTime? ActualArrival
+        private TimeSpan? actualArrival;
+        public TimeSpan? ActualArrival
         {
             get => actualArrival;
             set
@@ -42,8 +42,8 @@ namespace MAVAppBackend.Entities
             }
         }
 
-        private DateTime? actualDeparture;
-        public DateTime? ActualDeparture
+        private TimeSpan? actualDeparture;
+        public TimeSpan? ActualDeparture
         {
             get => actualDeparture;
             set
@@ -54,10 +54,10 @@ namespace MAVAppBackend.Entities
         }
         public override void Fill(DbDataReader reader)
         {
-            trainInstanceID = reader.GetInt32("train_instance_id");
+            trainInstanceID = reader.GetInt64("train_instance_id");
             trainStationID = reader.GetInt32("train_station_id");
-            actualArrival = reader.GetDateTimeOrNull("actual_arrival");
-            actualDeparture = reader.GetDateTimeOrNull("actual_departure");
+            actualArrival = reader.GetTimeSpanOrNull("actual_arrival");
+            actualDeparture = reader.GetTimeSpanOrNull("actual_departure");
             Filled = true;
         }
 

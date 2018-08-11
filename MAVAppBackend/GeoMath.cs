@@ -5,12 +5,12 @@ using System.Threading.Tasks;
 
 namespace MAVAppBackend
 {
-    public class GeoMath
+    public static class GeoMath
     {
         /// <summary>
         /// Radius of the Earth in kms
         /// </summary>
-        public const int EARTH_RADIUS = 6371;
+        public const int EarthRadius = 6371;
 
         /// <summary>
         /// Radians to degrees
@@ -33,7 +33,7 @@ namespace MAVAppBackend
         /// <summary>
         /// Converts from Latitude, Longitude pair to NVector
         /// </summary>
-        /// <param name="nvec">Latitude, longitude representation of Geographic position</param>
+        /// <param name="latLon">Latitude, longitude representation of Geographic position</param>
         public static Vector3 LatLonToNVector(Vector2 latLon)
         {
             return new Vector3(Math.Cos(Rad(latLon.X)) * Math.Cos(Rad(latLon.Y)), Math.Cos(Rad(latLon.X)) * Math.Sin(Rad(latLon.Y)), Math.Sin(Rad(latLon.X)));
@@ -53,7 +53,7 @@ namespace MAVAppBackend
         /// </summary>
         public static double DistanceBetweenNVectors(Vector3 a, Vector3 b)
         {
-            return EARTH_RADIUS * Math.Atan2(a.Cross(b).Length, a.Dot(b));
+            return EarthRadius * Math.Atan2(a.Cross(b).Length, a.Dot(b));
         }
     }
 }

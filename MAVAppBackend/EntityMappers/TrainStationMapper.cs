@@ -12,9 +12,9 @@ namespace MAVAppBackend.EntityMappers
     {
         public class TrainIDSelector : MultiSelector<int, int, TrainStation, OrdinalEntityCollection<int, int, TrainStation>>
         {
-            private DatabaseConnection connection;
-            private SelectQuery baseQuery;
-            private Func<DbDataReader> selectAll;
+            private readonly DatabaseConnection connection;
+            private readonly SelectQuery baseQuery;
+            private readonly Func<DbDataReader> selectAll;
 
             public TrainIDSelector(CacheContainer<int, TrainStation> cacheContainer, DatabaseConnection connection, SelectQuery baseQuery, Func<DbDataReader> selectAll)
                 : base(cacheContainer)

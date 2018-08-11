@@ -10,8 +10,8 @@ namespace MAVAppBackend.Entities
 {
     public class Trace : Entity<int>
     {
-        private int trainInstanceID;
-        public int TrainInstanceID
+        private long trainInstanceID;
+        public long TrainInstanceID
         {
             get => trainInstanceID;
             set
@@ -45,7 +45,7 @@ namespace MAVAppBackend.Entities
         public override void Fill(DbDataReader reader)
         {
             Key = reader.GetInt32("id");
-            trainInstanceID = reader.GetInt32("train_instance_id");
+            trainInstanceID = reader.GetInt64("train_instance_id");
             gpsCoord = reader.GetVector2OrNull("lat", "lon");
             updated = reader.GetDateTime("updated");
             Filled = true;

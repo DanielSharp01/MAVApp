@@ -11,8 +11,6 @@
 
   <ItemGroup>
     <Compile Remove="APIController.cs" />
-    <Compile Remove="APIHandlers\MAVTable.cs" />
-    <Compile Remove="APIHandlers\TRAINHandler.cs" />
     <Compile Remove="Controllers\CloseStationController.cs" />
     <Compile Remove="Controllers\RouteTrainsController.cs" />
     <Compile Remove="Controllers\StationTrainsController.cs" />
@@ -23,7 +21,6 @@
     <Compile Remove="EntityMappers\LineMapper.cs" />
     <Compile Remove="EntityMappers\StationLineMapper.cs" />
     <Compile Remove="LineTracer.cs" />
-    <Compile Remove="MAVAPI.cs" />
     <Compile Remove="Entities\Line.cs" />
     <Compile Remove="Entities\StationLine.cs" />
     <Compile Remove="Startup.cs" />
@@ -32,7 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="APIHandlers\" />
     <Folder Include="Controllers\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>

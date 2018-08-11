@@ -1,128 +1,95 @@
 ﻿using HtmlAgilityPack;
 using MAVAppBackend.DataAccess;
-using MAVAppBackend.Model;
+using MAVAppBackend.Entities;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using MAVAppBackend.EntityMappers;
 
 namespace MAVAppBackend.APIHandlers
 {
     public class TRAINHandler
     {
+        private long? instanceID;
+        private HtmlNode mainDiv;
         private MAVTable table;
-        public Polyline polyline; // TODO: depublicize
+        private Polyline polyline;
 
         public TRAINHandler(JObject apiResponse)
         {
+            if (apiResponse == null) return;
+
             HtmlDocument html = new HtmlDocument();
             html.LoadHtml(WebUtility.HtmlDecode((string)apiResponse["d"]["result"]["html"]));
+            mainDiv = html.DocumentNode.FirstChild;
             table = new MAVTable(html.DocumentNode.Descendants("table").FirstOrDefault(tb => tb.HasClass("vt")));
             polyline = new Polyline(Polyline.DecodePoints(apiResponse["d"]["result"]["line"][0]["points"].ToString(), 1E5));
+
+            object v = apiResponse["d"]["param"]["v"];
+            if (v != null)
+                instanceID = TrainInstance.GetInstanceID(v.ToString());
         }
 
-        public Train GetTrainFromHeader()
+        public void UpdateDatabase()
         {
             if (table == null) throw new MAVParseException("No train table.");
 
+            int number;
+            string type, name;
             HtmlNode tableHeader = table.GetTopHeader();
-            IEnumerator<HtmlNode> header = table.GetTopHeader().Descendants().Where(n => n.ParentNode == tableHeader).GetEnumerator();
-            if (!header.MoveNext()) throw new MAVParseException("No train header.");
-
-            string[] nameType = header.Current.InnerText.Split(new char[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-            if (nameType.Length < 1) throw new MAVParseException("Train header is not in the correct format.");
-
-            if (!int.TryParse(nameType.First(), out int number)) throw new MAVParseException("Train header does not contain a number.");
-
-            string type = nameType.Length > 1 ? nameType.Last() : null;
-            string name = nameType.Length > 2 ? string.Join(" ", nameType.Skip(1).SkipLast(1)) : null;
-
-            if (!header.MoveNext()) throw new MAVParseException("No train relations.");
-
-            if (header.Current.Name == "ul")
+            using (IEnumerator<HtmlNode> header = table.GetTopHeader().ChildNodes.AsEnumerable().GetEnumerator())
             {
-                type = figureOutTypeUl(header.Current);
-                if (!header.MoveNext()) throw new MAVParseException("No train relations.");
+                if (!header.MoveNext()) throw new MAVParseException("No train header.");
+
+                string[] nameType = header.Current.InnerText.Split(new char[] {' ', '\r', '\n', '\t'}, StringSplitOptions.RemoveEmptyEntries);
+                if (nameType.Length < 1) throw new MAVParseException("Train header is not in the correct format.");
+
+                if (!int.TryParse(nameType.First(), out number)) throw new MAVParseException("Train header does not contain a number.");
+
+                type = nameType.Length > 1 ? nameType.Last() : null;
+                name = nameType.Length > 2 ? string.Join(" ", nameType.Skip(1).SkipLast(1)) : null;
+
+
+                if (header.Current.Name == "ul")
+                    type = FigureOutTypeUl(header.Current);
+
+                if (header.Current.HasClass("viszszam2"))
+                    name = header.Current.InnerText;
             }
 
-            if (header.Current.HasClass("viszszam2"))
+            HtmlNode expiryDateLink = mainDiv.ChildNodes.SkipWhile(h => h.InnerText.Trim() != "Menetrend").SkipWhile(ul => ul.Name != "ul").FirstOrDefault()?.Descendants("li")
+                .FirstOrDefault(li => li.Attributes.Contains("style") && li.Attributes["style"].Value.Contains("bolder"))
+                ?.Descendants("a").FirstOrDefault();
+
+            if (expiryDateLink != null)
             {
-                name = header.Current.InnerText;
-                if (!header.MoveNext()) throw new MAVParseException("No train relations.");
+                long foundInstance = TrainInstance.GetInstanceID(Parsing.OnClickToJOBject(expiryDateLink.Attributes["onclick"].Value)["v"]?.ToString());
+                if (foundInstance != instanceID)
+                {
+                    Database.Instance.TrainInstanceMapper.Update(new TrainInstance() {Key = foundInstance, TrainID = number});
+                }
             }
 
-            bool next = true;
-            while (header.Current.Name != "font" && (next = header.MoveNext())) ;
-            if (!next) throw new MAVParseException("No train relations.");
-
-            string relation = header.Current.InnerText.Substring(1, header.Current.InnerText.IndexOf(",") - 1);
-            relation.Split(" - ");
-
-            string[] relationSpl = relation.Split(" - ");
-            if (relationSpl.Length != 2) throw new MAVParseException("Train relation is not in the correct format.");
-            relationSpl[0] = relationSpl[0].Trim();
-            relationSpl[1] = relationSpl[1].Trim();
-
-            string from = null;
-            string to = null;
-
-            if (relationSpl[0] != "")
-            {
-                from = relationSpl[0];
-            }
-
-            if (relationSpl[1] != "")
-            {
-                to = relationSpl[1];
-            }
-
-            if (from == null || to == null) throw new MAVParseException("Train relation is not in the correct format.");
+            DateTime epriryDate = DateTime.Parse(expiryDateLink.InnerText.Split('-')[1]);
 
             Train train = Database.Instance.TrainMapper.GetByKey(number);
-            train.APIFill(name, from, to, type);
+            train.Name = name;
+            train.Type = type;
+            train.Polyline = polyline;
+            train.ExpiryDate = epriryDate;
             Database.Instance.TrainMapper.Update(train);
-            return train;
-        }
 
-        public List<(string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? schedArrival, string platform)> Test()
-        {
-            List<(string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? schedArrival, string platform)> ret
-                = new List<(string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? schedArrival, string platform)>();
+            if (instanceID.HasValue)
+                Database.Instance.TrainInstanceMapper.Update(new TrainInstance() {Key = instanceID.Value, TrainID = number});
 
-            Database.Instance.StationMapper.BeginSelectNormName(new WhereInStrategy<string, Station>());
-            foreach (MAVTableRow row in table.GetRows())
-            {
-                string stationName = row.GetCellString(1);
-                Station station = Database.Instance.StationMapper.GetByName(stationName, false);
-                (TimeSpan? schedDeparture, TimeSpan? actDeparture) = row.GetCellTimes(2);
-                (TimeSpan? schedArrival, TimeSpan? actArrival) = row.GetCellTimes(3);
-
-                string platform = row.GetCellString(4);
-                if (platform != null) platform = platform.Trim();
-                if (platform == "") platform = null;
-
-                ret.Add((stationName, station, schedDeparture, schedArrival, platform));
-            }
-            Database.Instance.StationMapper.EndSelectNormName();
-
-            Database.Instance.StationMapper.BeginUpdate();
-            foreach ((string stationName, Station station, TimeSpan? schedDeparture, TimeSpan? schedArrival, string platform) in ret)
-            {
-                if (!station.Filled) Database.Instance.StationMapper.Update(station);
-            }
-            Database.Instance.StationMapper.EndUpdate();
-
-            return ret;
-        }
-
-        public void LineMapping()
-        {
+            UpdateStations(number);
             
         }
 
-        private string figureOutTypeUl(HtmlNode ul)
+        private string FigureOutTypeUl(HtmlNode ul)
         {
             IEnumerable<string> types = ul.Descendants("li").Select(li =>
             {
@@ -140,6 +107,123 @@ namespace MAVAppBackend.APIHandlers
             });
 
             return types.SkipWhile(s => s == "vonatpótló autóbusz").FirstOrDefault() ?? throw new MAVParseException("Train type list is not in the correct format.");
-        }   
+        }
+
+        private void UpdateStations(int trainNumber)
+        {
+            List<MAVTableRow> rows = table.GetRows().ToList();
+
+            Database.Instance.StationMapper.ByNormName.BeginSelect();
+            List<Station> stations = new List<Station>();
+            foreach (var row in rows)
+            {
+                Station station = new Station()
+                {
+                    Key = -1,
+                    Name = row.GetCellString(1),
+                    NormalizedName = Database.StationNormalizeName(row.GetCellString(1))
+                };
+
+                Database.Instance.StationMapper.ByNormName.FillByKey(station);
+                stations.Add(station);
+            }
+            Database.Instance.StationMapper.ByNormName.EndSelect();
+
+            Database.Instance.StationMapper.ByNormName.BeginSelect();
+            Database.Instance.StationMapper.BeginUpdate();
+            foreach (var station in stations)
+            {
+                if (!station.Filled)
+                {
+                    Database.Instance.StationMapper.Update(station);
+                    Database.Instance.StationMapper.ByNormName.FillByKey(station);
+                }
+            }
+            Database.Instance.StationMapper.EndUpdate();
+            Database.Instance.StationMapper.ByNormName.EndSelect();
+
+            double?[] relativeDistances = new double?[stations.Count];
+            for (int i = 0; i < stations.Count; i++)
+            {
+                double? dist = null;
+
+                if (stations[i].GPSCoord != null)
+                {
+                    dist = polyline.GetProjectedDistance(stations[i].GPSCoord, 0.25); 
+                }
+
+                relativeDistances[i] = dist;
+            }
+
+            bool flip = false;
+            double? lastLength = null;
+            for (int i = 0; i < relativeDistances.Length; i++)
+            {
+                if (lastLength.HasValue && relativeDistances[i].HasValue && relativeDistances[i] < lastLength)
+                {
+                    flip = true;
+                    break;
+                }
+
+                if (relativeDistances[i].HasValue)
+                    lastLength = relativeDistances[i];
+            }
+
+            // We have to flip the line because we don't have positive distances
+            if (flip)
+            {
+                double? first = relativeDistances.FirstOrDefault(r => r.HasValue);
+
+                if (first.HasValue)
+                {
+                    for (int i = 0; i < relativeDistances.Length; i++)
+                    {
+                        if (relativeDistances[i] != null)
+                            relativeDistances[i] = first - relativeDistances[i];
+                    }
+                }
+
+                polyline = new Polyline(polyline.Points.Reverse());
+            }
+            
+            Database.Instance.TrainStationMapper.BeginUpdate();
+            
+            for (int i = 0; i < rows.Count; i++)
+            {
+                string platform = rows[i].GetCellString(4).Trim();
+                TrainStation trainStation = new TrainStation()
+                {
+                    TrainID = trainNumber,
+                    Ordinal = i,
+                    StationID = stations[i].Key,
+                    Arrival = rows[i].GetCellTimes(2).first,
+                    Departure = rows[i].GetCellTimes(3).first,
+                    RelativeDistance = relativeDistances[i],
+                    Platform = platform == "" ? null : platform
+                };
+                Database.Instance.TrainStationMapper.Update(trainStation);
+            }
+            Database.Instance.TrainStationMapper.EndUpdate();
+
+
+            List<TrainStation> trainStations = Database.Instance.TrainStationMapper.ByTrainID.GetByKey(trainNumber).ToList(); 
+            if (instanceID.HasValue)
+            {
+                Database.Instance.TrainInstanceStationMapper.BeginUpdate();
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    string platform = rows[i].GetCellString(4).Trim();
+                    TrainInstanceStation trainStation = new TrainInstanceStation()
+                    {
+                        TrainInstanceID = instanceID.Value,
+                        TrainStationID = trainStations[i].Key,
+                        ActualArrival = (((TimeSpan?, TimeSpan? second))rows[i].GetCellObject(2)).second,
+                        ActualDeparture = (((TimeSpan?, TimeSpan? second))rows[i].GetCellObject(3)).second
+                    };
+                    Database.Instance.TrainInstanceStationMapper.Update(trainStation);
+                }
+                Database.Instance.TrainInstanceStationMapper.EndUpdate();
+            }
+        }
     }
 }

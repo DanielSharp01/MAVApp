@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Linq;
+using MAVAppBackend.APIHandlers;
 using MAVAppBackend.DataAccess;
 using MAVAppBackend.Entities;
+using Newtonsoft.Json.Linq;
 
 namespace MAVAppBackend
 {
@@ -10,18 +13,13 @@ namespace MAVAppBackend
         {
             using (Database.Instance)
             {
-                Database.Instance.TrainStationMapper.ByTrainID.BeginSelect();
-                var coll1 = Database.Instance.TrainStationMapper.ByTrainID.GetByKey(1);
-                var coll2 = Database.Instance.TrainStationMapper.ByTrainID.GetByKey(2);
-                Database.Instance.TrainStationMapper.ByTrainID.EndSelect();
-                foreach (var TrainStation in coll1)
-                {
-                    Console.WriteLine(Database.Instance.StationMapper.GetByKey(TrainStation.StationID).Name);
-                }
-                foreach (var TrainStation in coll2)
-                {
-                    Console.WriteLine(Database.Instance.StationMapper.GetByKey(TrainStation.StationID).Name);
-                }
+                JObject obj = MAVAPI.RequestTrain("105901_180811");
+                new TRAINHandler(obj).UpdateDatabase();
+
+                /*JObject obj = MAVAPI.RequestTrains();
+                new TRAINSHandler(obj).UpdateDatabase();
+
+                Console.WriteLine(Database.Instance.TraceMapper.ByTrainInstanceID.GetByKey(105397180811).First().GPSCoord);*/
             }
 
             Console.ReadLine();

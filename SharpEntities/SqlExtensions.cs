@@ -84,6 +84,15 @@ namespace SharpEntities
             return reader.GetDateTime(reader.GetOrdinal(columnName));
         }
 
+        /// <summary>Gets the value of the specified column as a <see cref="T:System.TimeSpan"></see> object.</summary>
+        /// <param name="columnName">The column name</param>
+        /// <returns>The value of the specified column.</returns>
+        /// <exception cref="T:System.InvalidCastException">The specified cast is not valid.</exception>
+        public static TimeSpan GetTimeSpan(this DbDataReader reader, string columnName)
+        {
+            return (TimeSpan)reader[reader.GetOrdinal(columnName)];
+        }
+
         /// <summary>Gets the value of the specified column as a <see cref="T:System.Decimal"></see> object.</summary>
         /// <param name="columnName">The column name</param>
         /// <returns>The value of the specified column.</returns>
@@ -292,7 +301,17 @@ namespace SharpEntities
         }
 
         /// <summary>
-        /// Gets the value of a specified column as an integer.
+        /// Gets the value of a specified column as a TimeSpan.
+        /// </summary>
+        /// <param name="columnName">The column name</param>
+        /// <returns>TimeSpan at columnName if not null, null otherwise</returns>
+        public static TimeSpan? GetTimeSpanOrNull(this DbDataReader reader, string columnName)
+        {
+            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? null : (TimeSpan?)reader.GetTimeSpan(columnName);
+        }
+
+        /// <summary>
+        /// Gets the value of a specified column as a nullable integer.
         /// </summary>
         /// <param name="columnName">The column name</param>
         /// <returns>Integer at columnName if not null, null otherwise</returns>
@@ -310,6 +329,17 @@ namespace SharpEntities
         public static int GetInt32OrDefault(this DbDataReader reader, string columnName, int @default)
         {
             return reader.IsDBNull(reader.GetOrdinal(columnName)) ? @default : reader.GetInt32(columnName);
+        }
+
+        /// <summary>
+        /// Gets the value of a specified column as a nullable double.
+        /// </summary>
+        /// <param name="columnName">The column name</param>
+        /// <param name="default">Default integer to return if column is null</param>
+        /// <returns>Double at columnName if not null, null otherwise</returns>
+        public static double? GetDoubleOrNull(this DbDataReader reader, string columnName)
+        {
+            return reader.IsDBNull(reader.GetOrdinal(columnName)) ? null : (double?)reader.GetDouble(columnName);
         }
     }
 }

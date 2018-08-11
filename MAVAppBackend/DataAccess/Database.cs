@@ -41,5 +41,37 @@ namespace MAVAppBackend.DataAccess
             connection?.Close();
             connection = null;
         }
+
+        /// <summary>
+        /// Normalizes a station name (removes Hungarian accents, replaces hyphens with spaces, removes redundant information such as "station")
+        /// </summary>
+        /// <param name="stationName">Name to normalize</param>
+        /// <returns>Normalized version of the same name</returns>
+        public static string StationNormalizeName(string stationName)
+        {
+            stationName = stationName.ToLower();
+
+            stationName = stationName.Replace('á', 'a');
+            stationName = stationName.Replace('é', 'e');
+            stationName = stationName.Replace('í', 'i');
+            stationName = stationName.Replace('ó', 'o');
+            stationName = stationName.Replace('ö', 'o');
+            stationName = stationName.Replace('ő', 'o');
+            stationName = stationName.Replace('ú', 'u');
+            stationName = stationName.Replace('ü', 'u');
+            stationName = stationName.Replace('ű', 'u');
+
+            stationName = stationName.Replace(" railway station crossing", "");
+            stationName = stationName.Replace(" railway station", "");
+            stationName = stationName.Replace(" train station", "");
+            stationName = stationName.Replace(" station", "");
+            stationName = stationName.Replace(" vonatallomas", "");
+            stationName = stationName.Replace(" vasutallomas", "");
+            stationName = stationName.Replace(" mav pu", "");
+            stationName = stationName.Replace("-", " ");
+
+            return stationName;
+        }
+
     }
 }

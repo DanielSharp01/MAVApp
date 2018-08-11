@@ -16,17 +16,10 @@ Is contained in the `tables.sql` and `data.sql` file in the root of the reposito
   - [x] TrainInstanceStations
   - [x] Trace
 
-- [ ] Model objects that make communication with Entities easier
-  - [ ] Train
-  - [ ] TrainStation
-  - [ ] TrainInstance
-  - [ ] TrainInstanceStation
-  - [ ] Trace
-
 - [ ] API Handlers
-  - [ ] TRAIN
+  - [x TRAIN
+  - [x] STATION
+  - [x] TRAINS
   - [ ] ROUTE
-  - [ ] STATION
-  - [ ] TRAINS
 
 - [ ] API Endpoints (subtasks tbd)

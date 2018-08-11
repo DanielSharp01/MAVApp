@@ -76,6 +76,7 @@ namespace MAVAppBackend.Entities
         }
         public override void Fill(DbDataReader reader)
         {
+            Key = reader.GetInt32("id");
             trainID = reader.GetInt32("train_id");
             ordinal = reader.GetInt32("ordinal");
             stationID = reader.GetInt32("station_id");

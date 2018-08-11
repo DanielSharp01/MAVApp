@@ -30,12 +30,12 @@ namespace MAVAppBackend.EntityMappers
                 return new Trace() { Key = key };
             }
 
-            protected override long GetCollectionKey(DbDataReader reader)
+            protected override long GetKey(DbDataReader reader)
             {
                 return reader.GetInt64("train_instance_id");
             }
 
-            protected override int GetKey(DbDataReader reader)
+            protected override int GetEntityKey(DbDataReader reader)
             {
                 return reader.GetInt32("id");
             }

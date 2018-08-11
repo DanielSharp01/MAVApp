@@ -78,6 +78,7 @@ namespace SharpEntities
         private readonly List<string> havingConditions = new List<string>();
         private readonly List<string> groupByColumns = new List<string>();
         private readonly List<string> orderByColumns = new List<string>();
+        private uint? limit = null;
         private Clause activeClause = Clause.From;
 
         public SelectQuery Clone()
@@ -90,6 +91,7 @@ namespace SharpEntities
             cloneQuery.whereConditions.AddRange(whereConditions);
             cloneQuery.groupByColumns.AddRange(groupByColumns);
             cloneQuery.orderByColumns.AddRange(orderByColumns);
+            cloneQuery.limit = limit;
 
             return cloneQuery;
         }
@@ -161,15 +163,21 @@ namespace SharpEntities
 
         public SelectQuery WhereIn(string column, int optionCount)
         {
+            return WhereIn(new[] {column}, optionCount);
+        }
+
+        public SelectQuery WhereIn(IList<string> columns, int optionCount)
+        {
             if (whereConditions.Count > 0)
                 whereConditions.Add("AND");
 
             StringBuilder builder = new StringBuilder();
             for (int i = 0; i < optionCount; i++)
             {
-                builder.Append($"{(i == 0 ? "" : ", ")}@{column}_{i}");
+                
+                builder.Append($"{(i == 0 ? "" : ", ")}({ string.Join(", ", columns.Select(s => $"@{s}_{i}"))})");
             }
-            whereConditions.Add($"{EscapeSqlIdentifier(column)} IN ({builder.ToString()})");
+            whereConditions.Add($"({string.Join(", ", columns.Select(EscapeSqlIdentifier))}) IN ({builder.ToString()})");
             activeClause = Clause.Where;
 
             return this;
@@ -215,6 +223,13 @@ namespace SharpEntities
             return this;
         }
 
+        public SelectQuery Limit(uint count)
+        {
+            limit = count;
+
+            return this;
+        }
+
         public override string ToSql()
         {
             if (columns.Count == 0) throw new InvalidOperationException("You must select at least one column.");
@@ -248,6 +263,11 @@ namespace SharpEntities
             {
                 builder.Append(" ORDER BY ");
                 builder.Append(string.Join(", ", orderByColumns));
+            }
+
+            if (limit.HasValue)
+            {
+                builder.Append(" LIMIT " + limit);
             }
 
             return builder.ToString();

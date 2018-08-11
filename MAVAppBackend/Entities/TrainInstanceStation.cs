@@ -54,6 +54,7 @@ namespace MAVAppBackend.Entities
         }
         public override void Fill(DbDataReader reader)
         {
+            Key = reader.GetInt32("id");
             trainInstanceID = reader.GetInt64("train_instance_id");
             trainStationID = reader.GetInt32("train_station_id");
             actualArrival = reader.GetTimeSpanOrNull("actual_arrival");

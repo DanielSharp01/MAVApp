@@ -64,6 +64,16 @@ namespace MAVAppBackend.APIHandlers
                 .FirstOrDefault(li => li.Attributes.Contains("style") && li.Attributes["style"].Value.Contains("bolder"))
                 ?.Descendants("a").FirstOrDefault();
 
+            DateTime? expiryDate = expiryDateLink == null ? (DateTime?)null : DateTime.Parse(expiryDateLink.InnerText.Split('-')[1]);
+
+            DateTime now = DateTime.Now;
+            Train train = Database.Instance.TrainMapper.GetByKey(number);
+            train.Name = name;
+            train.Type = type;
+            train.Polyline = polyline;
+            train.ExpiryDate = expiryDate ?? new DateTime(now.Year, 12, 31, 23, 59, 59);
+            Database.Instance.TrainMapper.Update(train);
+
             if (expiryDateLink != null)
             {
                 long foundInstance = TrainInstance.GetInstanceID(Parsing.OnClickToJOBject(expiryDateLink.Attributes["onclick"].Value)["v"]?.ToString());
@@ -72,16 +82,6 @@ namespace MAVAppBackend.APIHandlers
                     Database.Instance.TrainInstanceMapper.Update(new TrainInstance() {Key = foundInstance, TrainID = number});
                 }
             }
-
-            DateTime epriryDate = DateTime.Parse(expiryDateLink.InnerText.Split('-')[1]);
-
-            Train train = Database.Instance.TrainMapper.GetByKey(number);
-            train.Name = name;
-            train.Type = type;
-            train.Polyline = polyline;
-            train.ExpiryDate = epriryDate;
-            Database.Instance.TrainMapper.Update(train);
-
             if (instanceID.HasValue)
                 Database.Instance.TrainInstanceMapper.Update(new TrainInstance() {Key = instanceID.Value, TrainID = number});
 
@@ -128,19 +128,16 @@ namespace MAVAppBackend.APIHandlers
                 stations.Add(station);
             }
             Database.Instance.StationMapper.ByNormName.EndSelect();
-
-            Database.Instance.StationMapper.ByNormName.BeginSelect();
+            
             Database.Instance.StationMapper.BeginUpdate();
             foreach (var station in stations)
             {
                 if (!station.Filled)
                 {
                     Database.Instance.StationMapper.Update(station);
-                    Database.Instance.StationMapper.ByNormName.FillByKey(station);
                 }
             }
             Database.Instance.StationMapper.EndUpdate();
-            Database.Instance.StationMapper.ByNormName.EndSelect();
 
             double?[] relativeDistances = new double?[stations.Count];
             for (int i = 0; i < stations.Count; i++)

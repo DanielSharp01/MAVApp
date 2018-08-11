@@ -16,13 +16,6 @@ namespace MAVAppBackend.EntityMappers
             private readonly SelectQuery baseQuery;
             private readonly Func<DbDataReader> selectAll;
 
-            private DbDataReader SelectByNormalizedNames(IList<string> normNames)
-            {
-                DatabaseCommand cmd = baseQuery.Clone().WhereIn("norm_name", normNames.Count).ToPreparedCommand(connection);
-                cmd.Parameters.Add("@norm_name", normNames);
-                return cmd.ExecuteReader();
-            }
-
             public NormalizedNameSelector(CacheContainer<int, Station> cacheContainer, Func<DbDataReader> selectAll, DatabaseConnection connection, SelectQuery baseQuery)
                 : base(cacheContainer, "norm_name")
             {
@@ -122,6 +115,13 @@ namespace MAVAppBackend.EntityMappers
             command.Parameters.AddMultiple("@norm_name", entities.Select(e => e.NormalizedName));
             command.Parameters.AddMultipleVector2("@lat", "@lon", entities.Select(e => e.GPSCoord));
             command.ExecuteNonQuery();
+
+            ByNormName.BeginSelect();
+            foreach (var entity in entities)
+            {
+                ByNormName.FillByKey(entity);
+            }
+            ByNormName.EndSelect();
         }
 
         public override void Update(Station entity)

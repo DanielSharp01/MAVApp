@@ -67,6 +67,21 @@ namespace MAVAppBackend.APIHandlers
 
             return ((TimeSpan?, TimeSpan?))cellObjects[i];
         }
+
+        public (int? trainID, string type, string elviraID) GetCellTrain(int i)
+        {
+            if (CellCount <= i) cellObjects[i] = ((int?, string, string))(null, null, null);
+            else
+            {
+                int? trainID = int.Parse(cells[i].ChildNodes[0].InnerText);
+                string type = cells[i].ChildNodes[1].InnerText.Trim();
+                string elviraID = Parsing.OnClickToJOBject(cells[i].ChildNodes[0].Attributes["onclick"].Value)["v"].ToString();
+
+                cellObjects[i] = (trainID, type, elviraID);
+            }
+
+            return ((int?, string, string)) cellObjects[i];
+        }
     }
 
     public class MAVTable

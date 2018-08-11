@@ -6,12 +6,10 @@ using System.Text;
 
 namespace SharpEntities
 {
-    public abstract class Selector<B, K, E> where E : Entity<K>, new()
+    public abstract class Selector<B, K, E> : ArbitrarySelector<B, E> where E : Entity<K>, new()
     {
         protected CacheContainer<K, E> cacheContainer;
-        protected string cacheName = null;
-        protected Dictionary<B, E> selectBatch;
-        protected BatchSelectStrategy batchStrategy;
+        protected string cacheName;
 
         protected Selector(CacheContainer<K, E> cacheContainer, string cacheName = null)
         {
@@ -24,42 +22,20 @@ namespace SharpEntities
                 cacheContainer.Update += CacheContainerOnUpdate;
             }
         }
-
-        public virtual void BeginSelect(BatchSelectStrategy batchSelectStrategy = BatchSelectStrategy.MultiKey)
+        public override E GetByKey(B key)
         {
-            if (selectBatch != null) return;
-            batchStrategy = batchSelectStrategy;
-            selectBatch = new Dictionary<B, E>();
-        }
-
-        public virtual void EndSelect()
-        {
-            if (selectBatch == null) return;
-
-            if (selectBatch.Count == 0)
+            if (selectBatch != null && selectBatch.ContainsKey(key))
             {
-                selectBatch = null;
-                return;
+                return selectBatch[key];
             }
 
-            DbDataReader reader = (batchStrategy == BatchSelectStrategy.MultiKey) ? SelectByKeys(selectBatch.Keys.ToList()) : SelectAll();
-
-            while (reader.Read())
-            {
-                B key = GetKey(reader);
-                if (!selectBatch.ContainsKey(key)) continue;
-
-                var entity = selectBatch[key];
-                entity.Fill(reader);
-                entity.Filled = true;
-                cacheContainer.OnUpdate(entity);
-            }
-
-            reader.Close();
-            selectBatch = null;
+            E entity = (cacheName != null ? cacheContainer.GetFromCache<B>(cacheName, key) : null) ?? CreateEntity(key);
+            if (cacheName != null || !entity.Filled) FillByKey(entity);
+            return entity;
         }
 
-        public virtual E GetByKey(B key, bool forceFill = true)
+
+        public virtual E GetByKey(B key, bool forceFill)
         {
             if (selectBatch != null && selectBatch.ContainsKey(key))
             {
@@ -71,44 +47,20 @@ namespace SharpEntities
             return entity;
         }
 
-        public virtual void FillByKey(E entity)
-        {
-            if (selectBatch == null)
-            {
-                FillByKeySingle(entity);
-            }
-            else
-            {
-                B key = GetKey(entity);
-                if (!selectBatch.ContainsKey(key))
-                    selectBatch[key] = entity;
-            }
-        }
-
-        protected virtual void FillByKeySingle(E entity)
-        {
-            DbDataReader reader = SelectByKey(GetKey(entity));
-            if (reader.Read())
-            {
-                entity.Fill(reader);
-                entity.Filled = true;
-                cacheContainer.OnUpdate(entity);
-            }
-            reader.Close();
-        }
-
-        protected abstract DbDataReader SelectByKey(B key);
-
-        protected abstract DbDataReader SelectByKeys(IList<B> keys);
-
-        protected abstract DbDataReader SelectAll();
-
-        protected abstract B GetKey(E entity);
-
-        protected abstract B GetKey(DbDataReader reader);
-
         protected abstract E CreateEntity(B key);
 
         protected abstract void CacheContainerOnUpdate(E entity);
+
+        protected override E CreateValue(B key)
+        {
+            return CreateEntity(key);
+        }
+
+        protected override void Fill(E value, DbDataReader reader)
+        {
+            value.Fill(reader);
+            value.Filled = true;
+            cacheContainer.OnUpdate(value);
+        }
     }
 }

@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
-using System.Threading.Tasks;
-using MAVAppBackend.DataAccess;
 using MAVAppBackend.Entities;
 using SharpEntities;
 
@@ -23,7 +20,8 @@ namespace MAVAppBackend.EntityMappers
         protected override DbDataReader SelectByKey(long key)
         {
             selectByKeyCmd = selectByKeyCmd ?? baseQuery.Where("`id` = @id").ToCommand(connection);
-            selectAllCmd.Parameters.Add("@id", key);
+            selectByKeyCmd.Parameters.Clear();
+            selectByKeyCmd.Parameters.Add("@id", key);
             return selectByKeyCmd.ExecuteReader();
         }
 

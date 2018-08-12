@@ -52,11 +52,10 @@ namespace MAVAppBackend.APIHandlers
                 type = nameType.Length > 1 ? nameType.Last() : null;
                 name = nameType.Length > 2 ? string.Join(" ", nameType.Skip(1).SkipLast(1)) : null;
 
-
-                if (header.Current.Name == "ul")
+                if (header.MoveNext() && header.Current.Name == "ul")
                     type = FigureOutTypeUl(header.Current);
 
-                if (header.Current.HasClass("viszszam2"))
+                if (header.MoveNext() && header.Current.HasClass("viszszam2"))
                     name = header.Current.InnerText;
             }
 
@@ -128,16 +127,7 @@ namespace MAVAppBackend.APIHandlers
                 stations.Add(station);
             }
             Database.Instance.StationMapper.ByNormName.EndSelect();
-            
-            Database.Instance.StationMapper.BeginUpdate();
-            foreach (var station in stations)
-            {
-                if (!station.Filled)
-                {
-                    Database.Instance.StationMapper.Update(station);
-                }
-            }
-            Database.Instance.StationMapper.EndUpdate();
+            Database.Instance.StationMapper.Update(stations.Where(s => !s.Filled).ToList());
 
             double?[] relativeDistances = new double?[stations.Count];
             for (int i = 0; i < stations.Count; i++)

@@ -20,6 +20,7 @@ Is contained in the `tables.sql` and `data.sql` file in the root of the reposito
   - [x TRAIN
   - [x] STATION
   - [x] TRAINS
-  - [ ] ROUTE
+  - [ ] ROUTE (still needs testing)
 
+- [ ] Make the API Consumers more robust (tolerant to errors)
 - [ ] API Endpoints (subtasks tbd)

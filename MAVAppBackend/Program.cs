@@ -13,11 +13,11 @@ namespace MAVAppBackend
         {
             using (Database.Instance)
             {
-                //JObject obj = MAVAPI.RequestTrain("105901_180811");
-                //new TRAINHandler(obj).UpdateDatabase();
+                JObject obj = MAVAPI.RequestTrain("104904_180812");
+                new TRAINHandler(obj).UpdateDatabase();
 
-                JObject obj = MAVAPI.RequestStation("Budapest-Nyugati", DateTime.Now);
-                new STATIONHandler(obj).UpdateDatabase();
+                obj = MAVAPI.RequestRoute("Budapest-Nyugati", "Monor", null, DateTime.Now);
+                new ROUTEHandler(obj).UpdateDatabase();
 
                 //JObject obj = MAVAPI.RequestTrains();
                 //new TRAINSHandler(obj).UpdateDatabase();

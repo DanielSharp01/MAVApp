@@ -13,18 +13,15 @@ namespace MAVAppBackend.APIHandlers
 {
     public class STATIONHandler
     {
-        private long? instanceID;
-        private string stationName;
-        private HtmlNode mainDiv;
-        private MAVTable table;
+        private readonly string stationName;
+        private readonly MAVTable table;
 
         public STATIONHandler(JObject apiResponse)
-        {
+        {;
             if (apiResponse == null) return;
 
             HtmlDocument html = new HtmlDocument();
             html.LoadHtml(WebUtility.HtmlDecode((string)apiResponse["d"]["result"]));
-            mainDiv = html.DocumentNode.FirstChild;
             table = new MAVTable(html.DocumentNode.Descendants("table").FirstOrDefault(tb => tb.HasClass("af")));
             stationName = apiResponse["d"]["param"]["a"].ToString();
         }
@@ -44,24 +41,10 @@ namespace MAVAppBackend.APIHandlers
             List<Train> trains = new List<Train>();
             List<TrainInstance> trainInstances = new List<TrainInstance>();
             Database.Instance.TrainMapper.BeginSelect();
-            Database.Instance.TrainInstanceMapper.BeginSelect();
-
             List<MAVTableRow> rows = table.GetRows().ToList();
             foreach (var row in rows)
             {
-                (int? trainID, string trainType, string elviraID) = row.GetCellTrain(row.CellCount == 4 ? 3 : 2);
-
-                string name = null;
-                if (trainType.Contains("IC"))
-                {
-                    name = trainType.Replace("IC", "").Trim();
-                    trainType = "IC";
-                }
-                else if (trainType.Contains("EC"))
-                {
-                    name = trainType.Replace("EC", "").Trim();
-                    trainType = "EC";
-                }
+                (int? trainID, string trainType, string name, string elviraID) = row.GetCellStationTrain(row.CellCount == 4 ? 3 : 2);
 
                 if (trainID.HasValue)
                 {
@@ -70,15 +53,17 @@ namespace MAVAppBackend.APIHandlers
                     train.Type = trainType;
                     trains.Add(train);
 
-                    TrainInstance trainInstance = Database.Instance.TrainInstanceMapper.GetByKey(TrainInstance.GetInstanceID(elviraID));
-                    trainInstance.TrainID = trainID.Value;
+                    TrainInstance trainInstance = new TrainInstance
+                    {
+                        Key = TrainInstance.GetInstanceID(elviraID),
+                        TrainID = trainID.Value
+                    };
                     trainInstances.Add(trainInstance);
                 }
                 else throw new MAVParseException("Could not resolve train.");
             }
 
             Database.Instance.TrainMapper.EndSelect();
-            Database.Instance.TrainInstanceMapper.EndSelect();
             Database.Instance.TrainMapper.Update(trains.Where(t => !t.Filled).ToList());
             Database.Instance.TrainInstanceMapper.Update(trainInstances);
 

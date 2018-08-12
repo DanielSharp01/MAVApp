@@ -46,20 +46,22 @@ namespace MAVAppBackend.APIHandlers
             {
                 TimeSpan? first = null;
                 TimeSpan? second = null;
-                IEnumerator<HtmlNode> cellNodes = cells[i].Descendants().GetEnumerator();
-
-                if (cellNodes.MoveNext() && cellNodes.Current.InnerText.Trim() != "")
+                using (IEnumerator<HtmlNode> cellNodes = cells[i].Descendants().GetEnumerator())
                 {
-                    first = Parsing.TimeFromHoursMinutes(cellNodes.Current.InnerText);
-                    if (first == null)
-                        throw new MAVAPIException("Cell times are not in the correct format.");
-                }
 
-                if (cellNodes.MoveNext() && cellNodes.MoveNext() && cellNodes.Current.InnerText.Trim() != "")
-                {
-                    second = Parsing.TimeFromHoursMinutes(cellNodes.Current.InnerText);
-                    if (second == null)
-                        throw new MAVAPIException("Cell times are not in the correct format.");
+                    if (cellNodes.MoveNext() && cellNodes.Current.InnerText.Trim() != "")
+                    {
+                        first = Parsing.TimeFromHoursMinutes(cellNodes.Current.InnerText);
+                        if (first == null)
+                            throw new MAVAPIException("Cell times are not in the correct format.");
+                    }
+
+                    if (cellNodes.MoveNext() && cellNodes.MoveNext() && cellNodes.Current.InnerText.Trim() != "")
+                    {
+                        second = Parsing.TimeFromHoursMinutes(cellNodes.Current.InnerText);
+                        if (second == null)
+                            throw new MAVAPIException("Cell times are not in the correct format.");
+                    }
                 }
 
                 cellObjects[i] = (first, second);
@@ -68,19 +70,99 @@ namespace MAVAppBackend.APIHandlers
             return ((TimeSpan?, TimeSpan?))cellObjects[i];
         }
 
-        public (int? trainID, string type, string elviraID) GetCellTrain(int i)
+        public TimeSpan? GetCellTime(int i)
         {
-            if (CellCount <= i) cellObjects[i] = ((int?, string, string))(null, null, null);
+            if (CellCount <= i) cellObjects[i] = null;
             else
             {
-                int? trainID = int.Parse(cells[i].ChildNodes[0].InnerText);
-                string type = cells[i].ChildNodes[1].InnerText.Trim();
-                string elviraID = Parsing.OnClickToJOBject(cells[i].ChildNodes[0].Attributes["onclick"].Value)["v"].ToString();
+                TimeSpan? time = null;
+                using (IEnumerator<HtmlNode> cellNodes = cells[i].Descendants().GetEnumerator())
+                {
 
-                cellObjects[i] = (trainID, type, elviraID);
+                    if (cellNodes.MoveNext() && cellNodes.Current.InnerText.Trim() != "")
+                    {
+                        time = Parsing.TimeFromHoursMinutes(cellNodes.Current.InnerText);
+                        if (time == null)
+                            throw new MAVAPIException("Cell time is not in the correct format.");
+                    }
+                }
+
+                cellObjects[i] = time;
             }
 
-            return ((int?, string, string)) cellObjects[i];
+            return (TimeSpan?)cellObjects[i];
+        }
+
+        public string GetCellStationString(int i)
+        {
+            cellObjects[i] = null;
+            if (CellCount > i)
+                cellObjects[i] = cells[i].Descendants("a").FirstOrDefault()?.InnerText;
+
+            return (string)cellObjects[i];
+        }
+
+        public (int? trainID, string type, string name, string elviraID) GetCellStationTrain(int i)
+        {
+            if (CellCount <= i) cellObjects[i] = ((int?, string, string, string))(null, null, null, null);
+            else
+            {
+                int? trainID = int.Parse(cells[i].ChildNodes[0].InnerText.Trim());
+                string type = cells[i].ChildNodes[1].InnerText.Trim();
+                string name = null;
+                if (type.Contains("IC"))
+                {
+                    name = type.Replace("IC", "").Trim();
+                    type = "IC";
+                }
+                else if (type.Contains("EC"))
+                {
+                    name = type.Replace("EC", "").Trim();
+                    type = "EC";
+                }
+                string elviraID = Parsing.OnClickToJOBject(cells[i].ChildNodes[0].Attributes["onclick"].Value)["v"].ToString();
+
+                cellObjects[i] = (trainID, type, name, elviraID);
+            }
+
+            return ((int?, string, string, string)) cellObjects[i];
+        }
+
+        public (int? trainID, string type, string name, string elviraID) GetCellRouteTrain(int i)
+        {
+            if (CellCount <= i || GetCellString(i).Trim() == "") cellObjects[i] = ((int?, string, string, string))(null, null, null, null);
+            else
+            {
+                using (IEnumerator<HtmlNode> nodes = cells[i].ChildNodes.AsEnumerable().GetEnumerator())
+                {
+                    if (!nodes.MoveNext()) throw new MAVParseException("No train information.");
+
+                    int? trainID = int.Parse(nodes.Current.InnerText.Trim());
+                    string elviraID = Parsing.OnClickToJOBject(nodes.Current.Attributes["onclick"].Value)["v"].ToString();
+
+                    if (!nodes.MoveNext()) throw new MAVParseException("No train type information.");
+
+                    string type = nodes.Current.InnerText.Trim();
+                    string name = null;
+                    if (type.Contains("IC"))
+                    {
+                        name = type.Replace("IC", "").Trim();
+                        type = "IC";
+                    }
+                    else if (type.Contains("EC"))
+                    {
+                        name = type.Replace("EC", "").Trim();
+                        type = "EC";
+                    }
+
+                    if (nodes.MoveNext() && nodes.Current.HasClass("viszszam2"))
+                        name = nodes.Current.InnerText;
+
+                    cellObjects[i] = ((int?, string, string, string))(trainID, type, name, elviraID);
+                }
+            }
+
+            return ((int?, string, string, string))cellObjects[i];
         }
     }
 
@@ -103,14 +185,14 @@ namespace MAVAppBackend.APIHandlers
             else return null;
         }
 
-        public IEnumerable<MAVTableRow> GetRows()
+        public IEnumerable<MAVTableRow> GetRows(bool onMouseOverCheck = true)
         {
-            return table.Descendants("tr").Where(tr => !tr.Descendants("th").Any() && tr.Attributes.Contains("onmouseover")).Select(tr => new MAVTableRow(tr.Descendants("td")));
+            return table.Descendants("tr").Where(tr => !tr.Descendants("th").Any() && (tr.Attributes.Contains("onmouseover") || !onMouseOverCheck)).Select(tr => new MAVTableRow(tr.Descendants("td")));
         }
 
         public IEnumerable<MAVTable> GetRouteRows()
         {
-            return table.Descendants("tr").Where(tr => !tr.Descendants("th").Any()).Select(tr => tr.Descendants("table")).Where(t => t.Any()).Select(t => new MAVTable(t.First()));
+            return table.Descendants("tr").Select(tr => tr.Descendants("table")).Where(t => t.Any()).Select(t => new MAVTable(t.First()));
         }
     }
 }

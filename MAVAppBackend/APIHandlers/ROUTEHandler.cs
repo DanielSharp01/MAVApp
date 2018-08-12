@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Threading.Tasks;
 using HtmlAgilityPack;
 using MAVAppBackend.DataAccess;
 using MAVAppBackend.Entities;
@@ -37,16 +36,16 @@ namespace MAVAppBackend.APIHandlers
             foreach (var row in rows)
             {
                 string stationName = row.GetCellStationString(0);
-                (int? trainID, string type, string name, string elviraID) = row.GetCellRouteTrain(row.CellCount == 4 ? 3 : 2);
+                (int trainID, string type, string name, string elviraID) = row.GetCellRouteTrain(row.CellCount == 4 ? 3 : 2);
 
                 Station station = Database.Instance.StationMapper.ByNormName.GetByKey(Database.StationNormalizeName(stationName));
                 station.Key = -1;
                 station.Name = stationName;
                 stations.Add(station);
 
-                if (trainID.HasValue)
+                if (trainID != -1)
                 {
-                    Train train = Database.Instance.TrainMapper.GetByKey(trainID.Value);
+                    Train train = Database.Instance.TrainMapper.GetByKey(trainID);
                     train.Name = name;
                     train.Type = type;
                     trains.Add(train);
@@ -54,7 +53,7 @@ namespace MAVAppBackend.APIHandlers
                     TrainInstance trainInstance = new TrainInstance
                     {
                         Key = TrainInstance.GetInstanceID(elviraID),
-                        TrainID = trainID.Value
+                        TrainID = trainID
                     };
                     Database.Instance.TrainInstanceMapper.Update(trainInstance);
                 }

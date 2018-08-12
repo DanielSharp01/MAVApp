@@ -6,8 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Threading.Tasks;
-using MAVAppBackend.EntityMappers;
 
 namespace MAVAppBackend.APIHandlers
 {
@@ -144,16 +142,16 @@ namespace MAVAppBackend.APIHandlers
 
             bool flip = false;
             double? lastLength = null;
-            for (int i = 0; i < relativeDistances.Length; i++)
+            foreach (double? dist in relativeDistances)
             {
-                if (lastLength.HasValue && relativeDistances[i].HasValue && relativeDistances[i] < lastLength)
+                if (lastLength.HasValue && dist.HasValue && dist < lastLength)
                 {
                     flip = true;
                     break;
                 }
 
-                if (relativeDistances[i].HasValue)
-                    lastLength = relativeDistances[i];
+                if (dist.HasValue)
+                    lastLength = dist;
             }
 
             // We have to flip the line because we don't have positive distances
@@ -199,7 +197,6 @@ namespace MAVAppBackend.APIHandlers
                 Database.Instance.TrainInstanceStationMapper.BeginUpdate();
                 for (int i = 0; i < rows.Count; i++)
                 {
-                    string platform = rows[i].GetCellString(4).Trim();
                     TrainInstanceStation trainStation = new TrainInstanceStation()
                     {
                         TrainInstanceID = instanceID.Value,

@@ -4,7 +4,7 @@ This project is an ASP.net core 2.0 based API for the Hungarian railway company 
 
 ## MySQL table structure and static Station data
 
-Is contained in the `tables.sql` and `data.sql` file in the root of the repository.
+is contained in the `tables.sql` and `data.sql` file in the root of the repository.
 
 ## Tasks
 
@@ -17,7 +17,7 @@ Is contained in the `tables.sql` and `data.sql` file in the root of the reposito
   - [x] Trace
 
 - [ ] API Handlers
-  - [x TRAIN
+  - [x] TRAIN
   - [x] STATION
   - [x] TRAINS
   - [ ] ROUTE (still needs testing)

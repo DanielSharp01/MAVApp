@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace SharpEntities
+﻿namespace SharpEntities
 {
     public class KeyedValue<K, V>
     {

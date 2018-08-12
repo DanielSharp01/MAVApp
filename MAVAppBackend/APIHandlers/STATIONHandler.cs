@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Threading.Tasks;
 using HtmlAgilityPack;
 using MAVAppBackend.DataAccess;
 using MAVAppBackend.Entities;
-using MAVAppBackend.EntityMappers;
 using Newtonsoft.Json.Linq;
 
 namespace MAVAppBackend.APIHandlers
@@ -44,23 +42,19 @@ namespace MAVAppBackend.APIHandlers
             List<MAVTableRow> rows = table.GetRows().ToList();
             foreach (var row in rows)
             {
-                (int? trainID, string trainType, string name, string elviraID) = row.GetCellStationTrain(row.CellCount == 4 ? 3 : 2);
+                (int trainID, string trainType, string name, string elviraID) = row.GetCellStationTrain(row.CellCount == 4 ? 3 : 2);
 
-                if (trainID.HasValue)
+                Train train = Database.Instance.TrainMapper.GetByKey(trainID);
+                train.Name = name;
+                train.Type = trainType;
+                trains.Add(train);
+
+                TrainInstance trainInstance = new TrainInstance
                 {
-                    Train train = Database.Instance.TrainMapper.GetByKey(trainID.Value);
-                    train.Name = name;
-                    train.Type = trainType;
-                    trains.Add(train);
-
-                    TrainInstance trainInstance = new TrainInstance
-                    {
-                        Key = TrainInstance.GetInstanceID(elviraID),
-                        TrainID = trainID.Value
-                    };
-                    trainInstances.Add(trainInstance);
-                }
-                else throw new MAVParseException("Could not resolve train.");
+                    Key = TrainInstance.GetInstanceID(elviraID),
+                    TrainID = trainID
+                };
+                trainInstances.Add(trainInstance);
             }
 
             Database.Instance.TrainMapper.EndSelect();

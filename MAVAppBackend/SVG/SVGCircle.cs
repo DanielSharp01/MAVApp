@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
-namespace MAVAppBackend.SVG
+﻿namespace MAVAppBackend.SVG
 {
     public class SVGCircle : SVGObject
     {

@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data.Common;
-using System.Data.SqlClient;
-using System.Linq;
-using System.Threading.Tasks;
 using SharpEntities;
 
 namespace MAVAppBackend.DataAccess

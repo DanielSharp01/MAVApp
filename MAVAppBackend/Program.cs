@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Linq;
 using MAVAppBackend.APIHandlers;
 using MAVAppBackend.DataAccess;
-using MAVAppBackend.Entities;
 using Newtonsoft.Json.Linq;
 
 namespace MAVAppBackend

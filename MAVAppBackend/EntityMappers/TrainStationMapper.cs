@@ -68,7 +68,7 @@ namespace MAVAppBackend.EntityMappers
             public MaximumOrdinalSelector(DatabaseConnection connection)
             {
                 this.connection = connection;
-                baseQuery = SqlQuery.Select().Column("MAX(ordinal)", false, "ordinal").From("train_stations").GroupBy("train_id");
+                baseQuery = SqlQuery.Select().Column("train_id").Column("MAX(ordinal)", false, "ordinal").From("train_stations").GroupBy("train_id");
             }
 
             private DatabaseCommand selectByKeyCmd;

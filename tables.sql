@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `stations` (
   `lon` double DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `norm_name` (`norm_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Data exporting was unselected.
 -- Dumping structure for table mavapp.trace
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `trace` (
   PRIMARY KEY (`id`),
   KEY `FK_trace_train_instances` (`train_instance_id`),
   CONSTRAINT `FK_trace_train_instances` FOREIGN KEY (`train_instance_id`) REFERENCES `train_instances` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Data exporting was unselected.
 -- Dumping structure for table mavapp.trains
@@ -67,9 +67,10 @@ CREATE TABLE IF NOT EXISTS `train_instance_stations` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `train_instance_id_train_station_id` (`train_instance_id`,`train_station_id`),
   KEY `FK_train_instance_stations_train_stations` (`train_station_id`),
+  KEY `FK_train_instance_stations_train_instances` (`train_instance_id`),
   CONSTRAINT `FK_train_instance_stations_train_instances` FOREIGN KEY (`train_instance_id`) REFERENCES `train_instances` (`id`),
   CONSTRAINT `FK_train_instance_stations_train_stations` FOREIGN KEY (`train_station_id`) REFERENCES `train_stations` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Data exporting was unselected.
 -- Dumping structure for table mavapp.train_stations
@@ -83,11 +84,11 @@ CREATE TABLE IF NOT EXISTS `train_stations` (
   `rel_distance` double DEFAULT NULL,
   `platform` varchar(5) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `train_id_ordinal` (`train_id`,`ordinal`),
+  UNIQUE KEY `train_id_ordinal` (`train_id`,`station_id`),
   KEY `FK_train_stations_stations` (`station_id`),
   CONSTRAINT `FK_train_stations_stations` FOREIGN KEY (`station_id`) REFERENCES `stations` (`id`),
   CONSTRAINT `FK_train_stations_trains` FOREIGN KEY (`train_id`) REFERENCES `trains` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Data exporting was unselected.
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

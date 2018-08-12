@@ -18,7 +18,7 @@ namespace MAVAppBackend.APIHandlers
             if (apiResponse == null) return;
 
             HtmlDocument html = new HtmlDocument();
-            html.LoadHtml(WebUtility.HtmlDecode((string)apiResponse["d"]["result"]));
+            html.LoadHtml(WebUtility.HtmlDecode(apiResponse["d"]["result"].ToString()));
             table = new MAVTable(html.DocumentNode.Descendants("table").FirstOrDefault(tb => tb.HasClass("uf")));
         }
 
@@ -35,7 +35,7 @@ namespace MAVAppBackend.APIHandlers
             Database.Instance.StationMapper.ByNormName.BeginSelect();
             foreach (var row in rows)
             {
-                string stationName = row.GetCellStationString(0);
+                string stationName = row.GetCellStationString(0).Trim();
                 (int trainID, string type, string name, string elviraID) = row.GetCellRouteTrain(row.CellCount == 4 ? 3 : 2);
 
                 Station station = Database.Instance.StationMapper.ByNormName.GetByKey(Database.StationNormalizeName(stationName));
@@ -73,25 +73,22 @@ namespace MAVAppBackend.APIHandlers
             bool departure = true;
             for (int i = 0; i < rows.Count; i++)
             {
-                if (trains[i].Polyline == null)
+                TimeSpan time = rows[i].GetCellTime(1) ?? throw new MAVParseException("Time cannot be resolved.");
+                TrainStation trainStation = new TrainStation()
                 {
-                    TimeSpan time = rows[i].GetCellTime(1) ?? throw new MAVParseException("Time cannot be resolved.");
-                    TrainStation trainStation = new TrainStation()
-                    {
-                        Key = -1,
-                        TrainID = trains[i].Key,
-                        Ordinal = -1,
-                        Platform = rows[i].CellCount == 4 ? rows[i].GetCellString(2) : null,
-                        StationID = stations[i].Key
-                    };
-                    if (departure)
-                        trainStation.Departure = time;
-                    else
-                        trainStation.Arrival = time;
+                    Key = -1,
+                    TrainID = trains[i].Key,
+                    Ordinal = -1,
+                    Platform = rows[i].CellCount == 4 ? rows[i].GetCellString(2) : null,
+                    StationID = stations[i].Key
+                };
+                if (departure)
+                    trainStation.Departure = time;
+                else
+                    trainStation.Arrival = time;
 
-                    Database.Instance.TrainStationMapper.UniqueSelector.FillByKey(trainStation);
-                    trainStations.Add(trainStation);
-                }
+                Database.Instance.TrainStationMapper.UniqueSelector.FillByKey(trainStation);
+                trainStations.Add(trainStation);
 
                 departure = !departure;
             }

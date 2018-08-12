@@ -40,7 +40,7 @@ namespace MAVAppBackend.EntityMappers
 
             protected override (long, int) GetKey(DbDataReader reader)
             {
-                return (reader.GetInt32("train_instance_id"), reader.GetInt32("train_station_id"));
+                return (reader.GetInt64("train_instance_id"), reader.GetInt32("train_station_id"));
             }
 
             protected override DbDataReader SelectAll()

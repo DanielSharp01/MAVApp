@@ -1,0 +1,10 @@
+DELETE FROM trace;
+ALTER TABLE trace AUTO_INCREMENT = 1;
+DELETE from train_instance_stations;
+ALTER TABLE train_instance_stations AUTO_INCREMENT = 1;
+DELETE from train_instances;
+DELETE from train_stations;
+ALTER TABLE train_stations AUTO_INCREMENT = 1;
+DELETE from trains;
+DELETE FROM stations WHERE lat is NULL;
+ALTER TABLE stations AUTO_INCREMENT = 1;

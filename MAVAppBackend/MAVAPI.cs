@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
+using MAVAppBackend.APIHandlers;
 
 namespace MAVAppBackend
 {
@@ -13,16 +14,27 @@ namespace MAVAppBackend
     /// </summary>
     public class MAVAPIException : Exception
     {
-        public MAVAPIException(string message) : base(message)
+        public MAVAPIException(string message)
+            : base(message)
+        { }
+
+        public MAVAPIException(string message, Exception innerException)
+            : base(message, innerException)
         { }
     }
 
+    /// <inheritdoc />
     /// <summary>
     /// Exception thrown if the parsing of MAV API returned HTMLs fail
     /// </summary>
     public class MAVParseException : MAVAPIException
     {
-        public MAVParseException(string message) : base(message)
+        public MAVParseException(string message)
+            : base(message)
+        { }
+
+        public MAVParseException(string message, Exception innerException)
+            : base(message, innerException)
         { }
     }
 
@@ -66,138 +78,99 @@ namespace MAVAppBackend
             }
             catch (WebException e)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(e.Message);
-                Console.ResetColor();
-                return null;
+                throw new MAVAPIException("Could not resolve JSON request.", e);
             }
         }
 
         /// <summary>
-        /// Request a train from MÁV
+        /// Request the TRAIN API
         /// </summary>
         /// <param name="elviraID">Unique Key per train class</param>
-        /// <returns>JSON object of the train</returns>
-        public static JObject RequestTrain(int trainId)
+        /// <returns>An API handler object</returns>
+        public static TRAINHandler RequestTrain(int trainId)
         {
-            try
+            JObject requestParameters = new JObject
             {
-                JObject request = new JObject();
-                request["a"] = "TRAIN";
-                request["jo"] = new JObject();
-                request["jo"]["vsz"] = "55" + trainId;
-                JObject response = RequestMAV(request);
-                return response;
-            }
-            catch (MAVAPIException e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("MAVAPIException: " + e.Message);
-                Console.ResetColor();
-                return null;
-            }
+                ["a"] = "TRAIN",
+                ["jo"] = new JObject {["vsz"] = "55" + trainId}
+            };
+            return new TRAINHandler(RequestMAV(requestParameters));
         }
 
         /// <summary>
-        /// Request a train from MÁV
+        /// Request the TRAIN API
         /// </summary>
         /// <param name="elviraID">Unique Key</param>
-        /// <returns>JSON object of the train</returns>
-        public static JObject RequestTrain(string elviraID)
+        /// <returns>An API handler object</returns>
+        public static TRAINHandler RequestTrain(string elviraID)
         {
-            try
+            JObject requestParameters = new JObject
             {
-                JObject request = new JObject();
-                request["a"] = "TRAIN";
-                request["jo"] = new JObject();
-                request["jo"]["v"] = elviraID;
-                JObject response = RequestMAV(request);
-                return response;
-            }
-            catch (MAVAPIException e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("MAVAPIException: " + e.Message);
-                Console.ResetColor();
-                return null;
-            }
+                ["a"] = "TRAIN",
+                ["jo"] = new JObject {["v"] = elviraID}
+            };
+            return new TRAINHandler(RequestMAV(requestParameters));
         }
 
         /// <summary>
-        /// Request STATION API for trains starting from this station at a specific date from MÁV
+        /// Request the STATION API
         /// </summary>
-        /// <returns></returns>
-        public static JObject RequestStation(string stationName, DateTime date)
+        /// <param name="stationName">Name of the station</param>
+        /// <param name="date">Date of the timetable</param>
+        /// <returns>An API handler object</returns>
+        public static STATIONHandler RequestStation(string stationName, DateTime date)
         {
-            try
+            JObject requestParameters = new JObject
             {
-                JObject request = new JObject();
-                request["a"] = "STATION";
-                request["jo"] = new JObject();
-                request["jo"]["a"] = stationName;
-                request["jo"]["d"] = date.ToString("yyyy.MM.dd");
-                JObject response = RequestMAV(request);
-                return response;
-            }
-            catch (MAVAPIException e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("MAVAPIException: " + e.Message);
-                Console.ResetColor();
-                return null;
-            }
+                ["a"] = "STATION",
+                ["jo"] = new JObject
+                {
+                    ["a"] = stationName,
+                    ["d"] = date.ToString("yyyy.MM.dd")
+                }
+            };
+            return new STATIONHandler(RequestMAV(requestParameters));
         }
 
         /// <summary>
-        /// Request ROUTE API for trains going from A to B touching C at a specific date from MÁV
+        /// Request the ROUTE API
         /// </summary>
-        /// <returns></returns>
-        public static JObject RequestRoute(string from, string to, string touching, DateTime date)
+        /// <param name="from">Name of the station to plan from</param>
+        /// <param name="to">Name of the station to plan to</param>
+        /// <param name="touching">Name of the station to plan touching</param>
+        /// <param name="date">Date of the timetable</param>
+        /// <returns>An API handler object</returns>
+        public static ROUTEHandler RequestRoute(string from, string to, string touching, DateTime date)
         {
-            try
+            JObject requestParameters = new JObject
             {
-                JObject request = new JObject();
-                request["a"] = "ROUTE";
-                request["jo"] = new JObject();
-                request["jo"]["i"] = from;
-                request["jo"]["e"] = to;
-                if (touching != null) request["jo"]["v"] = touching;
-                request["jo"]["d"] = date.ToString("yyyy.MM.dd");
-                JObject response = RequestMAV(request);
-                return response;
-            }
-            catch (MAVAPIException e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("MAVAPIException: " + e.Message);
-                Console.ResetColor();
-                return null;
-            }
+                ["a"] = "ROUTE",
+                ["jo"] = new JObject
+                {
+                    ["i"] = @from,
+                    ["e"] = to
+                }
+            };
+            if (touching != null) requestParameters["jo"]["v"] = touching;
+            return new ROUTEHandler(RequestMAV(requestParameters));
         }
 
         /// <summary>
         /// Request TRAINS API for data about trains (position, delay) from MÁV
         /// </summary>
         /// <returns></returns>
-        public static JObject RequestTrains()
+        public static TRAINSHandler RequestTrains()
         {
-            try
+            JObject requestParameters = new JObject
             {
-                JObject request = new JObject();
-                request["a"] = "TRAINS";
-                request["jo"] = new JObject();
-                request["jo"]["history"] = false;
-                request["jo"]["id"] = false;
-                JObject response = RequestMAV(request);
-                return response;
-            }
-            catch (MAVAPIException e)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("MAVAPIException: " + e.Message);
-                Console.ResetColor();
-                return null;
-            }
+                ["a"] = "TRAINS",
+                ["jo"] = new JObject
+                {
+                    ["history"] = false,
+                    ["id"] = false
+                }
+            };
+            return new TRAINSHandler(RequestMAV(requestParameters));
         }
     }
 }

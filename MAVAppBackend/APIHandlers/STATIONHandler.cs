@@ -19,9 +19,9 @@ namespace MAVAppBackend.APIHandlers
             if (apiResponse == null) return;
 
             HtmlDocument html = new HtmlDocument();
-            html.LoadHtml(WebUtility.HtmlDecode((string)apiResponse["d"]["result"]));
+            html.LoadHtml(WebUtility.HtmlDecode(apiResponse["d"]["result"].ToString()));
             table = new MAVTable(html.DocumentNode.Descendants("table").FirstOrDefault(tb => tb.HasClass("af")));
-            stationName = apiResponse["d"]["param"]["a"].ToString();
+            stationName = apiResponse["d"]["param"]["a"].ToString().Trim();
         }
 
         public void UpdateDatabase()
@@ -67,21 +67,19 @@ namespace MAVAppBackend.APIHandlers
             {
                 string platform = rows[i].CellCount == 4 ? rows[i].GetCellString(2) : null;
 
-                if (trains[i].Polyline == null)
+                TrainStation trainStation = new TrainStation
                 {
-                    TrainStation trainStation = new TrainStation
-                    {
-                        TrainID = trains[i].Key,
-                        Ordinal = -1,
-                        StationID = station.Key,
-                        Arrival = rows[i].GetCellTimes(0).first,
-                        Departure = rows[i].GetCellTimes(1).first,
-                        Platform = platform
-                    };
+                    Key = -1,
+                    TrainID = trains[i].Key,
+                    Ordinal = -1,
+                    StationID = station.Key,
+                    Arrival = rows[i].GetCellTimes(0).first,
+                    Departure = rows[i].GetCellTimes(1).first,
+                    Platform = platform
+                };
 
-                    Database.Instance.TrainStationMapper.UniqueSelector.FillByKey(trainStation);
-                    trainStations.Add(trainStation);
-                }
+                Database.Instance.TrainStationMapper.UniqueSelector.FillByKey(trainStation);
+                trainStations.Add(trainStation);
             }
             Database.Instance.TrainStationMapper.UniqueSelector.EndSelect();
 
@@ -92,6 +90,7 @@ namespace MAVAppBackend.APIHandlers
             {
                 Database.Instance.TrainInstanceStationMapper.Update(new TrainInstanceStation
                 {
+                    Key = -1,
                     TrainInstanceID = trainInstances[i].Key,
                     TrainStationID = trainStations[i].Key,
                     ActualArrival = (((TimeSpan? first, TimeSpan? second))rows[i].GetCellObject(0)).second,

@@ -21,7 +21,7 @@ namespace MAVAppBackend.APIHandlers
             if (apiResponse == null) return;
 
             HtmlDocument html = new HtmlDocument();
-            html.LoadHtml(WebUtility.HtmlDecode((string)apiResponse["d"]["result"]["html"]));
+            html.LoadHtml(WebUtility.HtmlDecode(apiResponse["d"]["result"]["html"].ToString()));
             mainDiv = html.DocumentNode.FirstChild;
             table = new MAVTable(html.DocumentNode.Descendants("table").FirstOrDefault(tb => tb.HasClass("vt")));
             polyline = new Polyline(Polyline.DecodePoints(apiResponse["d"]["result"]["line"][0]["points"].ToString(), 1E5));
@@ -114,11 +114,12 @@ namespace MAVAppBackend.APIHandlers
             List<Station> stations = new List<Station>();
             foreach (var row in rows)
             {
+                string stationName = row.GetCellString(1).Trim();
                 Station station = new Station()
                 {
                     Key = -1,
-                    Name = row.GetCellString(1),
-                    NormalizedName = Database.StationNormalizeName(row.GetCellString(1))
+                    Name = stationName,
+                    NormalizedName = Database.StationNormalizeName(stationName)
                 };
 
                 Database.Instance.StationMapper.ByNormName.FillByKey(station);
@@ -141,43 +142,43 @@ namespace MAVAppBackend.APIHandlers
             }
 
             bool flip = false;
-            double? lastLength = null;
-            foreach (double? dist in relativeDistances)
+            int first = -1;
+            for (int i = 0; i < relativeDistances.Length; i++)
             {
-                if (lastLength.HasValue && dist.HasValue && dist < lastLength)
+                if (first != -1 && relativeDistances[first].HasValue && relativeDistances[i].HasValue && relativeDistances[i] < relativeDistances[first])
                 {
                     flip = true;
                     break;
                 }
 
-                if (dist.HasValue)
-                    lastLength = dist;
+                if (first == -1 && relativeDistances[i].HasValue)
+                    first = i;
             }
+
+            double firstDistance = first != -1 ? relativeDistances[first].Value : 0;
 
             // We have to flip the line because we don't have positive distances
             if (flip)
             {
-                double? first = relativeDistances.FirstOrDefault(r => r.HasValue);
-
-                if (first.HasValue)
+                relativeDistances[first] = 0;
+                for (int i = first + 1; i < relativeDistances.Length; i++)
                 {
-                    for (int i = 0; i < relativeDistances.Length; i++)
-                    {
-                        if (relativeDistances[i] != null)
-                            relativeDistances[i] = first - relativeDistances[i];
-                    }
+                    if (relativeDistances[i] != null)
+                        relativeDistances[i] = firstDistance - relativeDistances[i];
                 }
 
                 polyline = new Polyline(polyline.Points.Reverse());
             }
             
-            Database.Instance.TrainStationMapper.BeginUpdate();
+            Database.Instance.TrainStationMapper.UniqueSelector.BeginSelect();
             
+            List<TrainStation> trainStations = new List<TrainStation>();
             for (int i = 0; i < rows.Count; i++)
             {
-                string platform = rows[i].GetCellString(4).Trim();
+                string platform = (rows[i].CellCount == 4) ? rows[i].GetCellString(4).Trim() : null;
                 TrainStation trainStation = new TrainStation()
                 {
+                    Key = -1,
                     TrainID = trainNumber,
                     Ordinal = i,
                     StationID = stations[i].Key,
@@ -186,12 +187,16 @@ namespace MAVAppBackend.APIHandlers
                     RelativeDistance = relativeDistances[i],
                     Platform = platform == "" ? null : platform
                 };
-                Database.Instance.TrainStationMapper.Update(trainStation);
+                Database.Instance.TrainStationMapper.UniqueSelector.FillByKey(trainStation);
+                trainStations.Add(trainStation);
             }
-            Database.Instance.TrainStationMapper.EndUpdate();
+            Database.Instance.TrainStationMapper.UniqueSelector.EndSelect();
+            for (int i = 0; i < trainStations.Count; i++)
+            {
+                trainStations[i].Ordinal = i;
+            }
+            Database.Instance.TrainStationMapper.Update(trainStations);
 
-
-            List<TrainStation> trainStations = Database.Instance.TrainStationMapper.ByTrainID.GetByKey(trainNumber).ToList(); 
             if (instanceID.HasValue)
             {
                 Database.Instance.TrainInstanceStationMapper.BeginUpdate();
@@ -199,6 +204,7 @@ namespace MAVAppBackend.APIHandlers
                 {
                     TrainInstanceStation trainStation = new TrainInstanceStation()
                     {
+                        Key = -1,
                         TrainInstanceID = instanceID.Value,
                         TrainStationID = trainStations[i].Key,
                         ActualArrival = (((TimeSpan?, TimeSpan? second))rows[i].GetCellObject(2)).second,
@@ -211,3 +217,4 @@ namespace MAVAppBackend.APIHandlers
         }
     }
 }
+

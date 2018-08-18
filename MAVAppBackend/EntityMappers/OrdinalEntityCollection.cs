@@ -6,7 +6,7 @@ namespace MAVAppBackend.EntityMappers
 {
     public class OrdinalEntityCollection<B, K, E> : EntityCollection<B, K, E> where E : OrdinalEntity<K>
     {
-        private SortedList<int, E> orderedEntities = new SortedList<int, E>();
+        private readonly SortedList<int, E> orderedEntities = new SortedList<int, E>();
         public override IEnumerator<E> GetEnumerator()
         {
             return orderedEntities.Values.GetEnumerator();

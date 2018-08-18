@@ -12,12 +12,12 @@ namespace MAVAppBackend
         /// <summary>
         /// Points representing the polyline as latitude, longitude
         /// </summary>
-        private List<Vector2> points = new List<Vector2>();
+        private readonly List<Vector2> points = new List<Vector2>();
 
         /// <summary>
         /// NVectors (a form of encoding geographic position) for better distance calculation
         /// </summary>
-        private List<Vector2> projectedPoints = new List<Vector2>();
+        private readonly List<Vector2> projectedPoints = new List<Vector2>();
 
         /// <summary>
         /// Points representing the polyline as latitude, longitude

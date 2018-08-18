@@ -1,4 +1,5 @@
 ﻿using System;
+using Newtonsoft.Json.Linq;
 
 namespace MAVAppBackend
 {
@@ -162,5 +163,14 @@ namespace MAVAppBackend
         /// Square length of the vector. Can be used as a substitute when comparing a.Length &lt; b.Length to avoid square roots.
         /// </summary>
         public double LengthSquared => X * X + Y * Y;
+
+        public JObject ToJObject()
+        {
+            return new JObject()
+            {
+                ["x"] = X,
+                ["y"] = Y
+            };
+        }
     }
 }

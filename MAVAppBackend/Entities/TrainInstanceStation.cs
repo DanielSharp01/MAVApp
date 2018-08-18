@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Data.Common;
+using MAVAppBackend.DataAccess;
+using Newtonsoft.Json.Linq;
 using SharpEntities;
 
 namespace MAVAppBackend.Entities
@@ -28,6 +30,8 @@ namespace MAVAppBackend.Entities
             }
         }
 
+        public TrainStation TrainStation { get; private set; }
+
         private TimeSpan? actualArrival;
         public TimeSpan? ActualArrival
         {
@@ -54,6 +58,7 @@ namespace MAVAppBackend.Entities
             Key = reader.GetInt32("id");
             trainInstanceID = reader.GetInt64("train_instance_id");
             trainStationID = reader.GetInt32("train_station_id");
+            TrainStation = Database.Instance.TrainStationMapper.IsBatchBegun ? Database.Instance.TrainStationMapper.GetByKey(trainStationID) : null;
             actualArrival = reader.GetTimeSpanOrNull("actual_arrival");
             actualDeparture = reader.GetTimeSpanOrNull("actual_departure");
             Filled = true;
@@ -61,14 +66,31 @@ namespace MAVAppBackend.Entities
 
         public override void Fill(Entity<int> other)
         {
-            if (!(other is TrainInstanceStation trainStation)) return;
+            if (!(other is TrainInstanceStation trainInstanceStation)) return;
 
-            Key = trainStation.Key;
-            trainInstanceID = trainStation.trainInstanceID;
-            trainStationID = trainStation.trainStationID;
-            actualArrival = trainStation.actualArrival;
-            actualDeparture = trainStation.actualDeparture;
-            Filled = trainStation.Filled;
+            Key = trainInstanceStation.Key;
+            trainInstanceID = trainInstanceStation.trainInstanceID;
+            trainStationID = trainInstanceStation.trainStationID;
+            TrainStation = trainInstanceStation.TrainStation;
+            actualArrival = trainInstanceStation.actualArrival;
+            actualDeparture = trainInstanceStation.actualDeparture;
+            Filled = trainInstanceStation.Filled;
+        }
+
+        public JObject ToJObject()
+        {
+            JObject o = new JObject()
+            {
+                ["actual-arrival"] = actualArrival?.ToString(@"hh\:mm"),
+                ["actual-departure"] = actualDeparture?.ToString(@"hh\:mm")
+            };
+
+            if (TrainStation != null)
+            {
+                o.Merge(TrainStation?.ToJObject());
+            }
+
+            return o;
         }
     }
 }

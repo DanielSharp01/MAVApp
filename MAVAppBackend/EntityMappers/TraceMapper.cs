@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
-using MAVAppBackend.DataAccess;
 using MAVAppBackend.Entities;
+using MAVAppBackend.DataAccess;
 using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers
@@ -75,14 +75,14 @@ namespace MAVAppBackend.EntityMappers
         private DatabaseCommand selectByKeyCmd;
         protected override DbDataReader SelectByKey(int key)
         {
-            selectByKeyCmd = selectByKeyCmd ?? baseQuery.Where("`id` = @id").ToCommand(connection);
+            selectByKeyCmd = selectByKeyCmd ?? baseQuery.Clone().Where("`id` = @id").ToCommand(connection);
             selectAllCmd.Parameters.Add("@id", key);
             return selectByKeyCmd.ExecuteReader();
         }
 
         protected override DbDataReader SelectByKeys(IList<int> keys)
         {
-            DatabaseCommand cmd = baseQuery.WhereIn("id", keys.Count).ToCommand(connection);
+            DatabaseCommand cmd = baseQuery.Clone().WhereIn("id", keys.Count).ToCommand(connection);
             cmd.Parameters.AddMultiple("@id", keys);
             return selectByKeyCmd.ExecuteReader();
         }
@@ -103,12 +103,13 @@ namespace MAVAppBackend.EntityMappers
         {
             if (entities.Count == 0) return;
 
-            DatabaseCommand command = SqlQuery.Insert().Columns(new[] { "id", "train_instance_id", "lat", "lon" }).Into("trace").Values(entities.Count)
-                .OnDuplicateKey(new[] { "train_instance_id", "lat", "lon"} ).ToPreparedCommand(connection);
+            DatabaseCommand command = SqlQuery.Insert().Columns(new[] { "id", "train_instance_id", "lat", "lon", "delay" }).Into("trace").Values(entities.Count)
+                .OnDuplicateKey(new[] { "train_instance_id", "lat", "lon", "delay" } ).ToPreparedCommand(connection);
 
             command.Parameters.AddMultiple("@id", entities.Select(e => e.Key == -1 ? null : (object)e.Key));
             command.Parameters.AddMultiple("@train_instance_id", entities.Select(e => e.TrainInstanceID));
             command.Parameters.AddMultipleVector2("@lat", "@lon", entities.Select(e => e.GPSCoord));
+            command.Parameters.AddMultiple("@delay", entities.Select(e => e.Delay));
             command.ExecuteNonQuery();
         }
 

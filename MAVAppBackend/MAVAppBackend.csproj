@@ -15,7 +15,6 @@
     <Compile Remove="Controllers\RouteTrainsController.cs" />
     <Compile Remove="Controllers\StationTrainsController.cs" />
     <Compile Remove="Controllers\TestController.cs" />
-    <Compile Remove="Controllers\TrainController.cs" />
     <Compile Remove="Controllers\TrainsController.cs" />
     <Compile Remove="Database.cs" />
     <Compile Remove="EntityMappers\LineMapper.cs" />
@@ -23,13 +22,11 @@
     <Compile Remove="LineTracer.cs" />
     <Compile Remove="Entities\Line.cs" />
     <Compile Remove="Entities\StationLine.cs" />
-    <Compile Remove="Startup.cs" />
     <Compile Remove="StationInfo.cs" />
     <Compile Remove="Train.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 

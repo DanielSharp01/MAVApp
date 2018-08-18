@@ -1,28 +1,56 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using MAVAppBackend.DataAccess;
+using MAVAppBackend.Entities;
 
-namespace MAVAppBackend.Controller
+namespace MAVAppBackend.Controllers
 {
-    [Route("train/{id}")]
+    [Route("train")]
     public class TrainController : APIController
     {
         [HttpGet]
-        public IActionResult Get(string id, bool update = false, string data = "both")
+        public IActionResult Get(string[] ids, [ModelBinder(Name = "include-stations")] bool includeStations)
         {
-            if (!TryParseTrainDataFilter(data, out TrainDataFilter dataFilter))
-                return BadRequestError("Parameter 'data' must be either 'static only', 'dynamic only' or 'both'.");
+            List<TrainInstance> trainInstances = new List<TrainInstance>();
+            if (includeStations)
+            {
+                Database.Instance.StationMapper.BeginSelect();
+                Database.Instance.TrainStationMapper.BeginSelect();
+                Database.Instance.TrainInstanceStationMapper.ByTrainInstanceID.BeginSelect();
+            }
+            Database.Instance.TraceMapper.ByTrainInstanceID.BeginSelect();
+            Database.Instance.TrainMapper.BeginSelect();
 
-            Train train;
-            if (int.TryParse(id, out int mysqlID))
-                train = DatabaseLegacy.GetTrain(mysqlID, update);
-            else
-                train = DatabaseLegacy.GetTrainByElviraID(id, update);
+            foreach (var id in ids)
+            {
+                if (!TrainInstance.TryGetInstanceID(id, out long lid))
+                {
+                    trainInstances.Add(new TrainInstance() { Filled = false });
+                }
+                else
+                {
+                    trainInstances.Add(Database.Instance.TrainInstanceMapper.GetByKey(lid));
+                }
 
-            return Success(Train(train, dataFilter));
+            }
+
+            Database.Instance.TrainMapper.EndSelect();
+            Database.Instance.TraceMapper.ByTrainInstanceID.EndSelect();
+            if (includeStations)
+            {
+                Database.Instance.TrainInstanceStationMapper.ByTrainInstanceID.EndSelect();
+                Database.Instance.TrainStationMapper.EndSelect();
+                Database.Instance.StationMapper.EndSelect();
+            }
+
+            JObject dictionary = new JObject();
+            for (int i = 0; i < ids.Length; i++)
+            {
+                dictionary[ids[i]] = trainInstances[i].Filled ? trainInstances[i].ToJObject() : null;
+            }
+
+            return Success(dictionary);
         }
     }
 }

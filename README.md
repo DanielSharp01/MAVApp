@@ -2,13 +2,15 @@
 
 This project is an ASP.net core 2.0 based API for the Hungarian railway company (MÁV).
 
-## MySQL table structure and static Station data
+MySQL table structure is in `tables.sql`
 
-is contained in the `tables.sql` and `data.sql` file in the root of the repository.
+Static Station data is in `data.sql`
+
+API Documentation is in `APIDocs.md`
 
 ## Tasks
 
-- [x] Data Access Layer
+- [x] Data Access Layer 
   - [x] Stations
   - [x] Trains
   - [x] TrainInstances
@@ -16,11 +18,20 @@ is contained in the `tables.sql` and `data.sql` file in the root of the reposito
   - [x] TrainInstanceStations
   - [x] Trace
 
-- [ ] API Handlers
+- [x] API Handlers 
   - [x] TRAIN
   - [x] STATION
   - [x] TRAINS
-  - [x] ROUTE (still needs testing)
+  - [x] ROUTE
   - [x] Make the APIHandlers more robust
-
-- [ ] API Endpoints (subtasks tbd)
+  
+- [ ] API Endpoints 
+  - [x] API objects
+  - [x] /train/
+  - [x] /train-static/
+  - [ ] /station/
+  - [ ] /all-stations/
+  - [ ] /station-trains/
+  - [ ] /route/
+  - [ ] /listener-get/, /listener-unset/
+  - [ ] /set-user-train-data/

@@ -9,6 +9,8 @@ namespace SharpEntities
         protected Dictionary<K, V> selectBatch;
         protected BatchSelectStrategy batchStrategy;
 
+        public bool IsBatchBegun => selectBatch != null;
+
         public virtual void BeginSelect(BatchSelectStrategy batchSelectStrategy = BatchSelectStrategy.MultiKey)
         {
             if (selectBatch != null) return;

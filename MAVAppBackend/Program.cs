@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Linq;
-using MAVAppBackend.APIHandlers;
+using System.Threading.Tasks;
 using MAVAppBackend.DataAccess;
-using Newtonsoft.Json.Linq;
+using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Hosting;
 
 namespace MAVAppBackend
 {
@@ -10,15 +11,21 @@ namespace MAVAppBackend
     {
         public static void Main(string[] args)
         {
+            // /train?ids=105230_180818&include-stations=true
             using (Database.Instance)
             {
-                while (HandleInput(Console.ReadLine())) ;
+                Task.Run(() =>
+                {
+                    while (HandleInput(Console.ReadLine()))
+                    { }
+                });
+                BuildWebHost(args).Run();
             }
         }
 
         public static bool HandleInput(string input)
         {
-            if (input == "quit" || input == "exit") return false;
+            if (input == "quit" || input == "exit" || input == null) return false;
 
             if (input.StartsWith("route"))
             {
@@ -70,10 +77,10 @@ namespace MAVAppBackend
             return true;
         }
 
-        //public static IWebHost BuildWebHost(string[] args) =>
-        //    WebHost.CreateDefaultBuilder(args)
-        //        .UseStartup<Startup>()
-        //        .Build();
+        public static IWebHost BuildWebHost(string[] args) =>
+            WebHost.CreateDefaultBuilder(args)
+                .UseStartup<Startup>()
+                .Build();
     }
 }
 

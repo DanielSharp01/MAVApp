@@ -1,12 +1,14 @@
 ﻿using System;
 using Newtonsoft.Json.Linq;
 
-namespace MAVAppBackend.APIHandlers
+namespace MAVAppBackend
 {
     public static class Parsing
     {
         public static TimeSpan? TimeFromHoursMinutes(string hmString)
         {
+            if (hmString == null) return null;
+
             string[] spl = hmString.Split(':');
             if (spl.Length == 2 && int.TryParse(spl[0], out int hours) && int.TryParse(spl[1], out int minutes))
             {

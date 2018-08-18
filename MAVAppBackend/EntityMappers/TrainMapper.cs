@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
-using MAVAppBackend.DataAccess;
 using MAVAppBackend.Entities;
+using MAVAppBackend.DataAccess;
 using SharpEntities;
 
 namespace MAVAppBackend.EntityMappers

@@ -19,7 +19,7 @@ namespace MAVAppBackend.EntityMappers
         private DatabaseCommand selectByKeyCmd;
         protected override DbDataReader SelectByKey(long key)
         {
-            selectByKeyCmd = selectByKeyCmd ?? baseQuery.Where("`id` = @id").ToCommand(connection);
+            selectByKeyCmd = selectByKeyCmd ?? baseQuery.Clone().Where("`id` = @id").ToCommand(connection);
             selectByKeyCmd.Parameters.Clear();
             selectByKeyCmd.Parameters.Add("@id", key);
             return selectByKeyCmd.ExecuteReader();
@@ -27,7 +27,7 @@ namespace MAVAppBackend.EntityMappers
 
         protected override DbDataReader SelectByKeys(IList<long> keys)
         {
-            DatabaseCommand cmd = baseQuery.WhereIn("id", keys.Count).ToCommand(connection);
+            DatabaseCommand cmd = baseQuery.Clone().WhereIn("id", keys.Count).ToCommand(connection);
             cmd.Parameters.AddMultiple("@id", keys);
             return cmd.ExecuteReader();
         }

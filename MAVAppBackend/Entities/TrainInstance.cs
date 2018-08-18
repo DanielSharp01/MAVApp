@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Data.Common;
+using System.Linq;
+using MAVAppBackend.DataAccess;
+using Newtonsoft.Json.Linq;
 using SharpEntities;
 
 namespace MAVAppBackend.Entities
@@ -20,11 +23,21 @@ namespace MAVAppBackend.Entities
             }
         }
 
+        public Train Train { get; private set; }
+
+        public ListEntityCollection<long, int, TrainInstanceStation> Stations { get; private set; }
+
+        public ListEntityCollection<long, int, Trace> Trace { get; private set; }
+
         public override void Fill(DbDataReader reader)
         {
+            Key = reader.GetInt64("id");
             ElviraID = GetElviraID(Key);
             Date = GetDateTime(Key);
             trainID = reader.GetInt32OrNull("train_id");
+            Train = (Database.Instance.TrainMapper.IsBatchBegun && TrainID.HasValue) ? Database.Instance.TrainMapper.GetByKey(trainID.Value) : null;
+            Stations = Database.Instance.TrainInstanceStationMapper.ByTrainInstanceID.IsBatchBegun ? Database.Instance.TrainInstanceStationMapper.ByTrainInstanceID.GetByKey(Key) : null;
+            Trace = Database.Instance.TraceMapper.ByTrainInstanceID.IsBatchBegun ? Database.Instance.TraceMapper.ByTrainInstanceID.GetByKey(Key) : null;
             Filled = true;
         }
 
@@ -35,12 +48,24 @@ namespace MAVAppBackend.Entities
             Key = trainInstance.Key;
             Date = trainInstance.Date;
             trainID = trainInstance.trainID;
+            Train = trainInstance.Train;
+            foreach (var trainStation in trainInstance.Stations)
+            {
+                Stations.Add(trainStation);
+            }
             Filled = trainInstance.Filled;
         }
 
         public static long GetInstanceID(string elviraID)
         {
             return long.Parse(elviraID.Remove(elviraID.IndexOf('_'), 1));
+        }
+
+        public static bool TryGetInstanceID(string elviraID, out long id)
+        {
+            int sep = elviraID.IndexOf('_');
+            if (sep == -1) { id = -1; return false; }
+            return long.TryParse(elviraID.Remove(sep, 1), out id);
         }
 
         public static DateTime GetDateTime(long instanceID)
@@ -58,6 +83,25 @@ namespace MAVAppBackend.Entities
         public static string GetElviraID(long instanceID)
         {
             return (instanceID / 1000000) + "_" + (instanceID % 1000000);
+        }
+
+        public JObject ToJObject()
+        {
+            JObject o = Train?.ToJObject() ?? new JObject() { ["elvira-id"] = ElviraID };
+
+            if (Stations != null)
+            {
+                JArray array = new JArray();
+                foreach (var station in Stations)
+                {
+                    array.Add(station.ToJObject());
+                }
+                o["stations"] = array;
+            }
+
+            o["gps-coord"] = Trace.FirstOrDefault()?.GPSCoord?.ToJObject();
+
+            return o;
         }
     }
 }

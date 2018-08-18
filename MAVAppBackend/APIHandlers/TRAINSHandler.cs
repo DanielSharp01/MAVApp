@@ -34,7 +34,7 @@ namespace MAVAppBackend.APIHandlers
                 trainInstances.Add(Database.Instance.TrainInstanceMapper.GetByKey(trace.TrainInstanceID));
             }
             Database.Instance.TrainInstanceMapper.EndSelect();
-            Database.Instance.TrainInstanceMapper.Update(trainInstances.Where(i => !i.Filled).ToList());
+            Database.Instance.TrainInstanceMapper.Update(trainInstances.GroupBy(i => i.Key).Select(i => i.First()).Where(i => !i.Filled).ToList());
             Database.Instance.TraceMapper.EndUpdate();
         }
     }

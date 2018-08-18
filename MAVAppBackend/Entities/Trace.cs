@@ -29,6 +29,18 @@ namespace MAVAppBackend.Entities
             }
         }
 
+        private int delay;
+
+        public int Delay
+        {
+            get => delay;
+            set
+            {
+                delay = value;
+                OnChange();
+            }
+        }
+
         private DateTime updated;
         public DateTime Updated
         {
@@ -44,6 +56,7 @@ namespace MAVAppBackend.Entities
             Key = reader.GetInt32("id");
             trainInstanceID = reader.GetInt64("train_instance_id");
             gpsCoord = reader.GetVector2OrNull("lat", "lon");
+            delay = reader.GetInt32("delay");
             updated = reader.GetDateTime("updated");
             Filled = true;
         }
@@ -54,6 +67,7 @@ namespace MAVAppBackend.Entities
 
             trainInstanceID = trace.trainInstanceID;
             gpsCoord = trace.gpsCoord;
+            delay = trace.delay;
             updated = trace.updated;
             Filled = trace.Filled;
         }

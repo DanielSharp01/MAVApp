@@ -9,6 +9,57 @@ namespace MAVAppBackend.EntityMappers
 {
     public class TrainInstanceStationMapper : EntityMapper<int, TrainInstanceStation>
     {
+        public class TrainInstanceIDSelector : MultiSelector<long, int, TrainInstanceStation, ListEntityCollection<long, int, TrainInstanceStation>>
+        {
+            private readonly DatabaseConnection connection;
+            private readonly SelectQuery baseQuery;
+            private readonly Func<DbDataReader> selectAll;
+
+            public TrainInstanceIDSelector(CacheContainer<int, TrainInstanceStation> cacheContainer, DatabaseConnection connection, SelectQuery baseQuery, Func<DbDataReader> selectAll)
+                : base(cacheContainer)
+            {
+                this.connection = connection;
+                this.baseQuery = baseQuery;
+                this.selectAll = selectAll;
+            }
+
+            protected override TrainInstanceStation CreateEntity(int key)
+            {
+                return new TrainInstanceStation() { Key = key };
+            }
+
+            protected override long GetKey(DbDataReader reader)
+            {
+                return reader.GetInt64("train_instance_id");
+            }
+
+            protected override int GetEntityKey(DbDataReader reader)
+            {
+                return reader.GetInt32("id");
+            }
+
+            protected override DbDataReader SelectAll()
+            {
+                return selectAll();
+            }
+
+            private DatabaseCommand selectByKeyCmd;
+            protected override DbDataReader SelectByKey(long key)
+            {
+                selectByKeyCmd = selectByKeyCmd ?? baseQuery.Clone().Where("`train_instance_id` = @train_instance_id").ToPreparedCommand(connection);
+                selectByKeyCmd.Parameters.Clear();
+                selectByKeyCmd.Parameters.Add("@train_instance_id", key);
+                return selectByKeyCmd.ExecuteReader();
+            }
+
+            protected override DbDataReader SelectByKeys(IList<long> keys)
+            {
+                DatabaseCommand cmd = baseQuery.Clone().WhereIn("train_instance_id", keys.Count).ToPreparedCommand(connection);
+                cmd.Parameters.AddMultiple("@train_instance_id", keys);
+                return cmd.ExecuteReader();
+            }
+        }
+
         public class InsertUniqueSelector : Selector<(long, int), int, TrainInstanceStation>
         {
             private readonly DatabaseConnection connection;
@@ -71,11 +122,14 @@ namespace MAVAppBackend.EntityMappers
 
         protected readonly InsertUniqueSelector uniqueSelector;
 
+        public readonly TrainInstanceIDSelector ByTrainInstanceID;
+
         public TrainInstanceStationMapper(DatabaseConnection connection)
             : base(connection)
         {
             baseQuery = SqlQuery.Select().AllColumns().From("train_instance_stations");
             uniqueSelector = new InsertUniqueSelector(cacheContainer, connection, baseQuery, SelectAll);
+            ByTrainInstanceID = new TrainInstanceIDSelector(cacheContainer, connection, baseQuery, SelectAll);
         }
 
         protected override int GetKey(DbDataReader reader)

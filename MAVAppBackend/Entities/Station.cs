@@ -1,6 +1,7 @@
 ﻿using MAVAppBackend.DataAccess;
 using SharpEntities;
 using System.Data.Common;
+using Newtonsoft.Json.Linq;
 
 namespace MAVAppBackend.Entities
 {
@@ -42,6 +43,17 @@ namespace MAVAppBackend.Entities
             NormalizedName = station.NormalizedName;
             GPSCoord = station.GPSCoord;
             Filled = station.Filled;
+        }
+
+        public JObject ToJObject()
+        {
+            return new JObject()
+            {
+                ["id"] = Key,
+                ["name"] = Name,
+                ["normalized-name"] = NormalizedName,
+                ["gps-coord"] = GPSCoord?.ToJObject()
+            };
         }
     }
 }

@@ -18,12 +18,14 @@ namespace MAVAppBackend.Controllers
                 Database.Instance.StationMapper.BeginSelect();
                 Database.Instance.TrainStationMapper.ByTrainID.BeginSelect();
             }
+            Database.Instance.TrainMapper.BeginSelect();
 
             foreach (var id in ids)
             {
                 trains.Add(Database.Instance.TrainMapper.GetByKey(id));
             }
-            
+
+            Database.Instance.TrainMapper.EndSelect();
             if (includeStations)
             {
                 Database.Instance.TrainStationMapper.ByTrainID.EndSelect();

@@ -95,7 +95,7 @@ user-data-allowed: bool - whether user data is allowed to be sent and recieved (
 #### Default error template:
 ```
 {
-  "error": JObject
+  "error": JToken (can be an array of errors)
   "status": int - status code
 }
 ```
@@ -105,8 +105,8 @@ user-data-allowed: bool - whether user data is allowed to be sent and recieved (
 #### Params
 
 ```
-"ids": string[] - elvira-id
-"include-stations": bool - whether to include stations list and the encoded polyline
+ids: string[] - elvira-id
+include-stations: bool - whether to include stations list and the encoded polyline
 ```
 
 #### Returns
@@ -125,8 +125,8 @@ Dictionary of train-number as key and `TrainInstance` as value
 #### Params
 
 ```
-"ids": int[] - train-number
-"include-stations": bool - whether to include stations list and the encoded polyline
+ids: int[] - train-number
+include-stations: bool - whether to include stations list and the encoded polyline
 ```
 
 #### Returns
@@ -140,12 +140,12 @@ Dictionary of train-number as key and `Train` as value
 }
 ```
 
-### /station/
+### /station/ ![IMPLEMENTED](https://place-hold.it/120x18/33aa33/eeeeee?text=IMPLEMENTED&bold)
 
 #### Params
 
 ```
-"id": int[]
+id: string[] - id if integer, name (which will be normalized) otherwise
 ```
 
 #### Returns
@@ -159,19 +159,29 @@ Dictionary of id as key and `Station` as value
 }
 ```
 
-### /all-station/
+### /all-stations/ ![IMPLEMENTED](https://place-hold.it/120x18/33aa33/eeeeee?text=IMPLEMENTED&bold)
 
 #### Params
 
-No additional parameters.
+```
+filter : string
+order-by: string - id / name / distance(only when filter distance is used)
+name-only : bool
+```
+
+#### Filters:
+
+```
+distance(km, lat, lon)
+```
 
 #### Returns
 
-All stations in dictionary of id as key and `Station` as value
+All stations in dictionary of id as key and `Station` as value. Optionally filtered and ordered.
 
 ```
 {
-  "234": <Station>,
+  "234": <Station> or string - if name-only is set to true,
   ...
 }
 ```
@@ -238,8 +248,8 @@ With this you can track which train you are on. If you are already tracking you 
 To track each user the "device-guid" is used.
 
 ```
-latitude: double
-longitude: double
+lat: double
+lon: double
 ```
 
 #### Returns
@@ -262,11 +272,11 @@ Only the "device-guid" is used. No additional parameters.
 
 #### Returns
 
-A candidate train if found or null if not found.
+A list of candidate trains in order of relevance (or something like that)
 
 ```
 {
-  candidates: [<Train>] in order of relevance (or something like that)
+  candidates: [<Train>]
 }
 ```
 

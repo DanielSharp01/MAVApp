@@ -99,7 +99,10 @@ namespace MAVAppBackend.Entities
                 o["stations"] = array;
             }
 
-            o["gps-coord"] = Trace.FirstOrDefault()?.GPSCoord?.ToJObject();
+            Trace trace = Trace.FirstOrDefault();
+
+            if (trace != null && (DateTime.UtcNow - trace.Updated).TotalSeconds <= 20)
+                o["gps-coord"] = trace.GPSCoord?.ToJObject();
 
             return o;
         }

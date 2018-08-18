@@ -29,8 +29,8 @@ API Documentation is in `APIDocs.md`
   - [x] API objects
   - [x] /train/
   - [x] /train-static/
-  - [ ] /station/
-  - [ ] /all-stations/
+  - [x] /station/
+  - [x] /all-stations/
   - [ ] /station-trains/
   - [ ] /route/
   - [ ] /listener-get/, /listener-unset/

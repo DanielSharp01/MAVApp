@@ -41,6 +41,7 @@ namespace SharpEntities
                 cacheContainer.OnUpdate(entity);
                 entities.Add(entity);
             }
+            reader.Close();
 
             return entities;
         }

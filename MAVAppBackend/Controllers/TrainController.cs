@@ -21,6 +21,7 @@ namespace MAVAppBackend.Controllers
             }
             Database.Instance.TraceMapper.ByTrainInstanceID.BeginSelect();
             Database.Instance.TrainMapper.BeginSelect();
+            Database.Instance.TrainInstanceMapper.BeginSelect();
 
             foreach (var id in ids)
             {
@@ -35,6 +36,7 @@ namespace MAVAppBackend.Controllers
 
             }
 
+            Database.Instance.TrainInstanceMapper.EndSelect();
             Database.Instance.TrainMapper.EndSelect();
             Database.Instance.TraceMapper.ByTrainInstanceID.EndSelect();
             if (includeStations)

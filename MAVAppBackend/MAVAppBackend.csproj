@@ -11,22 +11,23 @@
 
   <ItemGroup>
     <Compile Remove="APIController.cs" />
+    <Compile Remove="Controllers\AllStationsController.cs" />
+    <Compile Remove="Controllers\APIController.cs" />
     <Compile Remove="Controllers\CloseStationController.cs" />
     <Compile Remove="Controllers\RouteTrainsController.cs" />
+    <Compile Remove="Controllers\StationController.cs" />
     <Compile Remove="Controllers\StationTrainsController.cs" />
-    <Compile Remove="Controllers\TestController.cs" />
+    <Compile Remove="Controllers\TrainController.cs" />
     <Compile Remove="Controllers\TrainsController.cs" />
+    <Compile Remove="Controllers\TrainStaticController.cs" />
     <Compile Remove="Database.cs" />
-    <Compile Remove="EntityMappers\LineMapper.cs" />
-    <Compile Remove="EntityMappers\StationLineMapper.cs" />
     <Compile Remove="LineTracer.cs" />
-    <Compile Remove="Entities\Line.cs" />
-    <Compile Remove="Entities\StationLine.cs" />
     <Compile Remove="StationInfo.cs" />
     <Compile Remove="Train.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Controllers\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
@@ -35,10 +36,7 @@
     <PackageReference Include="Microsoft.AspNetCore.All" Version="2.0.6" />
     <PackageReference Include="MySql.Data" Version="8.0.11" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\SharpEntities\SharpEntities.csproj" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="2.1.1" />
   </ItemGroup>
 
 </Project>

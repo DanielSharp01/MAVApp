@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
-using MAVAppBackend.DataAccess;
+using MAVAppBackend.EF;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 
 namespace MAVAppBackend
 {
@@ -12,22 +13,17 @@ namespace MAVAppBackend
         public static void Main(string[] args)
         {
             // /train?ids=105230_180818&include-stations=true
-            using (Database.Instance)
-            {
-                Task.Run(() =>
-                {
-                    while (HandleInput(Console.ReadLine()))
-                    { }
-                });
-                BuildWebHost(args).Run();
-            }
+            while (HandleInput(Console.ReadLine()))
+            { }
+
+            //BuildWebHost(args).Run();
         }
 
         public static bool HandleInput(string input)
         {
             if (input == "quit" || input == "exit" || input == null) return false;
 
-            if (input.StartsWith("route"))
+            /*if (input.StartsWith("route"))
             {
                 input = input.Substring("route".Length);
                 string[] parameters = input.Split(",").Select(s => s.Trim()).ToArray();
@@ -50,23 +46,23 @@ namespace MAVAppBackend
             {
                 MAVAPI.RequestTrains().UpdateDatabase();;
             }
-            else if (input.StartsWith("train"))
+            else */if (input.StartsWith("train"))
             {
                 input = input.Substring("train".Length);
                 if (input.Contains('_'))
                 {
-                    MAVAPI.RequestTrain(input).UpdateDatabase();
+                    MAVAPI.RequestTrain(input).Handle();
                 }
                 else
                 {
-                    MAVAPI.RequestTrain(int.Parse(input)).UpdateDatabase();
+                    MAVAPI.RequestTrain(int.Parse(input)).Handle();
                 }
             }
-            else if (input.StartsWith("station"))
+            /*else if (input.StartsWith("station"))
             {
                 input = input.Substring("station".Length);
                 MAVAPI.RequestStation(input.Trim(), DateTime.Now).UpdateDatabase();
-            }
+            }*/
             else
             {
                 Console.ForegroundColor = ConsoleColor.Red;

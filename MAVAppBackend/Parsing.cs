@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using HtmlAgilityPack;
 using Newtonsoft.Json.Linq;
 
 namespace MAVAppBackend
@@ -36,6 +38,31 @@ namespace MAVAppBackend
         public static JObject OnClickToJOBject(string onclick)
         {
             return JObject.Parse(onclick.SubstringBetweenChars('{', '}'));
+        }
+
+        public static (TimeSpan? first, TimeSpan? second) GetCellTimes(HtmlNode cell)
+        {
+            TimeSpan? first = null;
+            TimeSpan? second = null;
+            using (IEnumerator<HtmlNode> cellNodes = cell.Descendants().GetEnumerator())
+            {
+
+                if (cellNodes.MoveNext() && cellNodes.Current.InnerText.Trim() != "")
+                {
+                    first = TimeFromHoursMinutes(cellNodes.Current.InnerText);
+                    if (first == null)
+                        throw new MAVAPIException("Cell times are not in the correct format.");
+                }
+
+                if (cellNodes.MoveNext() && cellNodes.MoveNext() && cellNodes.Current.InnerText.Trim() != "")
+                {
+                    second = TimeFromHoursMinutes(cellNodes.Current.InnerText);
+                    if (second == null)
+                        throw new MAVAPIException("Cell times are not in the correct format.");
+                }
+            }
+
+            return (first, second);
         }
     }
 }

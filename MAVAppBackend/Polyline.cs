@@ -9,6 +9,8 @@ namespace MAVAppBackend
     /// </summary>
     public class Polyline
     {
+        public const double EncodingFactor = 1e5;
+
         /// <summary>
         /// Points representing the polyline as latitude, longitude
         /// </summary>
